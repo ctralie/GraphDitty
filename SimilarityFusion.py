@@ -142,7 +142,7 @@ def getS(W, K):
 
 
 def doSimilarityFusionWs(Ws, K = 5, NIters = 20, regDiag = 1, regNeighbs = 0.5, \
-        PlotNames = [], PlotExtents = None, verboseTimes = False):
+        doPlot = False, PlotNames = [], PlotExtents = None, verboseTimes = False):
     """
     Perform similarity fusion between a set of exponentially
     weighted similarity matrices
@@ -153,9 +153,9 @@ def doSimilarityFusionWs(Ws, K = 5, NIters = 20, regDiag = 1, regNeighbs = 0.5, 
         self-similarity promotion
     :param regNeighbs: Neighbor regularization parameter for promoting
         adjacencies in time
+    :param doPlot: Save an animation of the cross-diffusion process
     :param PlotNames: Strings describing different similarity
-        measurements. If this array is specified, an
-        animation will be saved of the cross-diffusion process
+        measurements for the animation
     :param PlotExtents: Time labels for images
     :return D: A fused NxN similarity matrix
     """
@@ -173,13 +173,13 @@ def doSimilarityFusionWs(Ws, K = 5, NIters = 20, regDiag = 1, regNeighbs = 0.5, 
 
     N = len(Pts)
     AllTimes = []
-    if len(PlotNames) == N:
+    if doPlot:
         res = 5
         plt.figure(figsize=(res*N, res*2))
         from Laplacian import getLaplacianEigsDense
     for it in range(NIters):
-        if len(PlotNames) == N:
-            import scipy.ndimage.interpolation as interp
+        ticiter = time.time()
+        if doPlot:
             for i in range(N):
                 plt.subplot(2, N, i+1)
                 Im = 1.0*Pts[i]
@@ -231,6 +231,7 @@ def doSimilarityFusionWs(Ws, K = 5, NIters = 20, regDiag = 1, regNeighbs = 0.5, 
                 nextPts[i][np.abs(I - J) == 1] += regNeighbs
 
         Pts = nextPts
+        print("Elapsed Time Iter %i of %i: %g"%(it+1, NIters, time.time()-ticiter))
     if verboseTimes:
         print("Total Time multiplying: %g"%np.sum(np.array(AllTimes)))
     FusedScores = np.zeros(Pts[0].shape)
@@ -239,20 +240,22 @@ def doSimilarityFusionWs(Ws, K = 5, NIters = 20, regDiag = 1, regNeighbs = 0.5, 
     return FusedScores/N
 
 def doSimilarityFusion(Scores, K = 5, NIters = 20, regDiag = 1, \
-        regNeighbs = 0.5, PlotNames = [], PlotExtents = None):
+        regNeighbs = 0.5, doPlot = False, PlotNames = [], PlotExtents = None):
     """
     Do similarity fusion on a set of NxN distance matrices.
     Parameters the same as doSimilarityFusionWs
+    :returns (An array of similarity matrices for each feature, Fused Similarity Matrix)
     """
     #Affinity matrices
     Ws = [getW(D, K) for D in Scores]
-    return doSimilarityFusionWs(Ws, K, NIters, regDiag, regNeighbs, PlotNames, PlotExtents)
+    return (Ws, doSimilarityFusionWs(Ws, K, NIters, regDiag, regNeighbs, \
+                    doPlot, PlotNames, PlotExtents))
 
 #Synthetic example
 if __name__ == "__main__":
     np.random.seed(100)
     N = 200
-    D = np.ones((N, N)) + 0.1*np.random.randn(N, N)
+    D = np.ones((N, N)) + 0.01*np.random.randn(N, N)
     D[D < 0] = 0
     I = np.arange(100)
     D[I, I] = 0
@@ -275,5 +278,6 @@ if __name__ == "__main__":
     plt.imshow(D2)
     plt.show()
 
-    doSimilarityFusion([D1, D2], K = 5, NIters = 20, reg = 1, PlotNames = ["D1", "D2"])
+    doSimilarityFusion([D1, D2], K = 5, NIters = 20, regDiag = 1, \
+                         regNeighbs = 0, doPlot = True, PlotNames = ["D1", "D2"])
 
