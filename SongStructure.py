@@ -11,11 +11,15 @@ import argparse
 from CSMSSMTools import getCSM, getCSMCosine
 from SimilarityFusion import doSimilarityFusion
 
+import crema
+
+ChordModel = crema.models.chord.ChordModel()
+
 """
 TODO: Try SNF with different window lengths to better capture multiresolution structure
 """
 
-def getFusedSimilarity(filename, sr = 22050, hopSize = 512, winFac = 5, \
+def getFusedSimilarity(filename, sr = 22050, hopSize = 2048, winFac = 5, \
         winsPerBlock = 20, K = 10, NIters = 10, doAnimation = False):
     """
     Load in filename, compute features, average/stack delay, and do similarity
@@ -28,19 +32,26 @@ def getFusedSimilarity(filename, sr = 22050, hopSize = 512, winFac = 5, \
     """
     print("Loading %s..."%filename)
     y, sr = librosa.load(filename, sr=sr)
-    chroma = librosa.feature.chroma_stft(y=y, sr=sr)
+#    chroma = librosa.feature.chroma_stft(y=y, sr=sr)
+    # square root the pitch predictions to make PPK embeddings
+    chroma = ChordModel.outputs(y=y, sr=sr)['chord_pitch'].T**0.5
+#    chroma = ChordModel.outputs(y=y, sr=sr)['chord_root'].T**0.5
 
-    S = librosa.feature.melspectrogram(y, sr=sr, n_mels=128)
+    S = librosa.feature.melspectrogram(y, sr=sr, n_mels=128, hop_length=hopSize)
     log_S = librosa.power_to_db(S, ref=np.max)
     mfcc = librosa.feature.mfcc(S=log_S, n_mfcc=20)
-
+    
     #Compute features in intervals evenly spaced by the hop size
     #but average within "winFac" intervals of hopSize
     nHops = int((y.size-hopSize*winFac*winsPerBlock)/hopSize)
     intervals = np.arange(0, nHops, winFac)
-    intervals = librosa.util.fix_frames(intervals, x_min=0, x_max=chroma.shape[1])
+    intervals = librosa.util.fix_frames(intervals, x_min=0, x_max=min(mfcc.shape[1], chroma.shape[1]))
     chroma = librosa.util.sync(chroma, intervals)
     mfcc = librosa.util.sync(mfcc, intervals)
+
+    n_frames = min(chroma.shape[1], mfcc.shape[1])
+    chroma = chroma[:, :n_frames]
+    mfcc = mfcc[:, :n_frames]
 
     #Do a delay embedding and compute SSMs
     XChroma = librosa.feature.stack_memory(chroma, n_steps=winsPerBlock, mode='edge').T
