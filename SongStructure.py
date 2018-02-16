@@ -11,19 +11,27 @@ import argparse
 from CSMSSMTools import getCSM, getCSMCosine
 from SimilarityFusion import doSimilarityFusion
 
+"""
 import crema
-
 ChordModel = crema.models.chord.ChordModel()
+"""
 
 """
 TODO: Try SNF with different window lengths to better capture multiresolution structure
 """
 
-def getFusedSimilarity(filename, sr = 22050, hopSize = 2048, winFac = 5, \
-        winsPerBlock = 20, K = 10, NIters = 10, doAnimation = False):
+def getFusedSimilarity(filename, sr, hopSize, winFac, winsPerBlock, K, NIters, doAnimation):
     """
     Load in filename, compute features, average/stack delay, and do similarity
-    network fusion
+    network fusion (SNF)
+    :param filename: Path to music file
+    :param sr: Sample rate at which to sample file
+    :param hopSize: Hop size between frames in chroma and mfcc
+    :param winFac: Number of frames to average (i.e. factor by which to downsample)
+    :param winsPerBlock: Number of aggregated windows per sliding window block
+    :param K: Number of nearest neighbors in SNF
+    :param NIters: Number of iterations in SNF
+    :param doAnimation: Whether to plot and save images of the evolution of SNF
     :returns {'Ws': An array of weighted adjacency matrices for individual features, \
             'WFused': The fused adjacency matrix, \
             'times': Timestamps in seconds of each element in the adjacency matrices, \
@@ -32,11 +40,12 @@ def getFusedSimilarity(filename, sr = 22050, hopSize = 2048, winFac = 5, \
     """
     print("Loading %s..."%filename)
     y, sr = librosa.load(filename, sr=sr)
-#    chroma = librosa.feature.chroma_stft(y=y, sr=sr)
+    chroma = librosa.feature.chroma_stft(y=y, sr=sr, hop_length=hopSize)
     # square root the pitch predictions to make PPK embeddings
+    """
     chroma = ChordModel.outputs(y=y, sr=sr)['chord_pitch'].T**0.5
-#    chroma = ChordModel.outputs(y=y, sr=sr)['chord_root'].T**0.5
-
+    chroma = ChordModel.outputs(y=y, sr=sr)['chord_root'].T**0.5
+    """
     S = librosa.feature.melspectrogram(y, sr=sr, n_mels=128, hop_length=hopSize)
     log_S = librosa.power_to_db(S, ref=np.max)
     mfcc = librosa.feature.mfcc(S=log_S, n_mfcc=20)
