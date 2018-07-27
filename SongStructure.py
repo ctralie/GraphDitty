@@ -10,17 +10,10 @@ import librosa
 import argparse
 from CSMSSMTools import getCSM, getCSMCosine
 from SimilarityFusion import doSimilarityFusion
+from Laplacian import getLaplacianEigsDense
+from SongStructureGUI import saveResultsJSON
 
-"""
-import crema
-ChordModel = crema.models.chord.ChordModel()
-"""
-
-"""
-TODO: Try SNF with different window lengths to better capture multiresolution structure
-"""
-
-def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, niters, do_animation, plot_result):
+def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, niters, neigs, do_animation, plot_result):
     """
     Load in filename, compute features, average/stack delay, and do similarity
     network fusion (SNF)
@@ -31,6 +24,7 @@ def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, nit
     :param wins_per_block: Number of aggregated windows per sliding window block
     :param K: Number of nearest neighbors in SNF
     :param niters: Number of iterations in SNF
+    :param neigs: Number of eigenvectors in the Laplacian
     :param do_animation: Whether to plot and save images of the evolution of SNF
     :param plot_result: Whether to plot the result of the fusion
     :returns {'Ws': An array of weighted adjacency matrices for individual features, \
@@ -42,11 +36,6 @@ def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, nit
     print("Loading %s..."%filename)
     y, sr = librosa.load(filename, sr=sr)
     chroma = librosa.feature.chroma_stft(y=y, sr=sr, hop_length=hop_length)
-    # square root the pitch predictions to make PPK embeddings
-    """
-    chroma = ChordModel.outputs(y=y, sr=sr)['chord_pitch'].T**0.5
-    chroma = ChordModel.outputs(y=y, sr=sr)['chord_root'].T**0.5
-    """
     S = librosa.feature.melspectrogram(y, sr=sr, n_mels=128, hop_length=hop_length)
     log_S = librosa.power_to_db(S, ref=np.max)
     mfcc = librosa.feature.mfcc(S=log_S, n_mfcc=20)
@@ -75,22 +64,31 @@ def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, nit
     interval = hop_length*win_fac/float(sr)
     times = interval*np.arange(DMFCC.shape[0])
     print("Interval = %.3g Seconds, Block = %.3g Seconds"%(interval, interval*wins_per_block))
-    PlotExtents = [0, hop_length*win_fac*float(DChroma.shape[0])/(sr)]
+    PlotExtents = [0, times[-1]]
     (Ws, WFused) = doSimilarityFusion(Ds, K = K, niters = niters, \
         reg_diag = 1, reg_neighbs=0.5, \
         do_animation = do_animation, PlotNames = FeatureNames, \
         PlotExtents = PlotExtents) 
+    (w, v, L) = getLaplacianEigsDense(WFused, neigs)
+    v = v[:, 1::]
     if plot_result:
-        plt.clf()
+        plt.figure(figsize=(14, 6))
         WShow = np.array(WFused)
         np.fill_diagonal(WShow, 0)
+        plt.subplot(121)
         plt.imshow(np.log(5e-2+WShow), interpolation = 'none', cmap = 'afmhot', \
         extent = (PlotExtents[0], PlotExtents[1], PlotExtents[1], PlotExtents[0]))
         plt.title(filename)
         plt.xlabel("Time (sec)")
         plt.ylabel("Time (sec)")
+        plt.subplot(122)
+        plt.imshow(v, cmap='afmhot', interpolation = 'none', aspect='auto', \
+            extent=(0, v.shape[1], PlotExtents[1], PlotExtents[0]))
+        plt.title("Laplacian")
+        plt.ylabel("Time (sec)")
+        plt.xlabel("Eigenvector Num")
         plt.show()
-    return {'Ws':Ws, 'WFused':WFused, 'times':times, \
+    return {'Ws':Ws, 'WFused':WFused, 'times':times, 'v':v, \
             'BlockLen':interval*wins_per_block, 'FeatureNames':FeatureNames}
 
 if __name__ == '__main__':
@@ -104,12 +102,16 @@ if __name__ == '__main__':
     parser.add_argument('--wins_per_block', type=int, default=20, help="Number of frames to stack in sliding window for every feature")
     parser.add_argument('--K', type=int, default=10, help="Number of nearest neighbors in similarity network fusion")
     parser.add_argument('--niters', type=int, default=10, help="Number of iterations in similarity network fusion")
+    parser.add_argument('--neigs', type=int, default=8, help="Number of eigenvectors in the graph Laplacian")
     parser.add_argument('--matfilename', type=str, default="out.mat", help="Name of the .mat file to which to save the results")
+    parser.add_argument('--jsonfilename', type=str, default="out.json", help="Name of the .json file to which to save results for viewing in the GUI")
 
 
     opt = parser.parse_args()
     res = getFusedSimilarity(opt.filename, sr=opt.sr, \
         hop_length=opt.hop_length, win_fac=opt.win_fac, wins_per_block=opt.wins_per_block, \
-        K=opt.K, niters=opt.niters, do_animation=opt.do_animation, \
+        K=opt.K, niters=opt.niters, neigs=opt.neigs, do_animation=opt.do_animation, \
         plot_result=opt.plot_result)
     sio.savemat(opt.matfilename, res)
+    saveResultsJSON(opt.filename, res['times'], res['WFused'], res['v'], opt.jsonfilename)
+    

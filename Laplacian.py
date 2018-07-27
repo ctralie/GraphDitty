@@ -8,14 +8,14 @@ import scipy.io as sio
 import matplotlib.pyplot as plt
 from scipy.ndimage.filters import median_filter
 
-def getLaplacianEigs(A, NEigs):
+def getLaplacianEigs(A, neigs):
     DEG = sparse.dia_matrix((A.sum(1).flatten(), 0), A.shape)
     L = DEG - A
-    w, v = slinalg.eigsh(L, k=NEigs, sigma = 0, which = 'LM')
+    w, v = slinalg.eigsh(L, k=neigs, sigma = 0, which = 'LM')
     return (w, v, L)
 
-def getLaplacianEigsDense(A, NEigs):
+def getLaplacianEigsDense(A, neigs):
     DEG = scipy.sparse.dia_matrix((A.sum(1).flatten(), 0), A.shape)
     L = DEG.toarray() - A
     w, v = linalg.eigh(L)
-    return (w[0:NEigs], v[:, 0:NEigs], L)
+    return (w[0:neigs], v[:, 0:neigs], L)
