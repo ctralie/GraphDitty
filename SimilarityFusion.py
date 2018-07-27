@@ -141,19 +141,19 @@ def getS(W, K):
     return S
 
 
-def doSimilarityFusionWs(Ws, K = 5, NIters = 20, regDiag = 1, regNeighbs = 0.5, \
-        doPlot = False, PlotNames = [], PlotExtents = None, verboseTimes = False):
+def doSimilarityFusionWs(Ws, K = 5, niters = 20, reg_diag = 1, reg_neighbs = 0.5, \
+        do_animation = False, PlotNames = [], PlotExtents = None, verboseTimes = False):
     """
     Perform similarity fusion between a set of exponentially
     weighted similarity matrices
     :param Ws: An array of NxN affinity matrices for N songs
     :param K: Number of nearest neighbors
-    :param NIters: Number of iterations
-    :param regDiag: Identity matrix regularization parameter for
+    :param niters: Number of iterations
+    :param reg_diag: Identity matrix regularization parameter for
         self-similarity promotion
-    :param regNeighbs: Neighbor regularization parameter for promoting
+    :param reg_neighbs: Neighbor regularization parameter for promoting
         adjacencies in time
-    :param doPlot: Save an animation of the cross-diffusion process
+    :param do_animation: Save an animation of the cross-diffusion process
     :param PlotNames: Strings describing different similarity
         measurements for the animation
     :param PlotExtents: Time labels for images
@@ -173,28 +173,30 @@ def doSimilarityFusionWs(Ws, K = 5, NIters = 20, regDiag = 1, regNeighbs = 0.5, 
 
     N = len(Pts)
     AllTimes = []
-    if doPlot:
+    if do_animation:
         res = 5
         plt.figure(figsize=(res*N, res*2))
         from Laplacian import getLaplacianEigsDense
-    for it in range(NIters):
+    for it in range(niters):
         ticiter = time.time()
-        if doPlot:
+        if do_animation:
             for i in range(N):
-                plt.subplot(2, N, i+1)
+                plt.subplot(1, N, i+1)
                 Im = 1.0*Pts[i]
                 np.fill_diagonal(Im, 0)
                 if PlotExtents:
-                    plt.imshow(np.log(1e-3+Im), interpolation = 'none', cmap = 'afmhot', \
+                    plt.imshow(np.log(5e-2+Im), interpolation = 'none', cmap = 'afmhot', \
                     extent = (PlotExtents[0], PlotExtents[1], PlotExtents[1], PlotExtents[0]))
                     plt.xlabel("Time (sec)")
                     plt.ylabel("Time (sec)")
                 else:
-                    plt.imshow(np.log(1e-3+Im), interpolation = 'none', cmap = 'afmhot')
+                    plt.imshow(np.log(5e-2+Im), interpolation = 'none', cmap = 'afmhot')
                 plt.title(PlotNames[i])
                 #Compute Laplacian eigenvectors
+                """
                 NEigs = 20
                 (w, v, L) = getLaplacianEigsDense(Pts[i], NEigs)
+                print(w)
                 plt.subplot(2, N, N+i+1)
                 if PlotExtents:
                     plt.imshow(v, cmap = 'afmhot', aspect = 'auto', interpolation = 'none', \
@@ -205,6 +207,7 @@ def doSimilarityFusionWs(Ws, K = 5, NIters = 20, regDiag = 1, regNeighbs = 0.5, 
                 plt.xlim([1, NEigs-1])
                 plt.title("Laplacian Eigenvectors")
                 plt.xlabel("Eigenvector Number")
+                """
             plt.savefig("SSMFusion%i.png"%it, dpi=300, bbox_inches='tight')
             plt.clf()
         for i in range(N):
@@ -222,16 +225,16 @@ def doSimilarityFusionWs(Ws, K = 5, NIters = 20, regDiag = 1, regNeighbs = 0.5, 
             nextPts[i] = Ss[i].dot(A.T)
             toc = time.time()
             AllTimes.append(toc - tic)
-            if regDiag > 0:
-                nextPts[i] += regDiag*np.eye(nextPts[i].shape[0])
-            if regNeighbs > 0:
+            if reg_diag > 0:
+                nextPts[i] += reg_diag*np.eye(nextPts[i].shape[0])
+            if reg_neighbs > 0:
                 arr = np.arange(nextPts[i].shape[0])
                 [I, J] = np.meshgrid(arr, arr)
                 #Add diagonal regularization as well
-                nextPts[i][np.abs(I - J) == 1] += regNeighbs
+                nextPts[i][np.abs(I - J) == 1] += reg_neighbs
 
         Pts = nextPts
-        print("Elapsed Time Iter %i of %i: %g"%(it+1, NIters, time.time()-ticiter))
+        print("Elapsed Time Iter %i of %i: %g"%(it+1, niters, time.time()-ticiter))
     if verboseTimes:
         print("Total Time multiplying: %g"%np.sum(np.array(AllTimes)))
     FusedScores = np.zeros(Pts[0].shape)
@@ -239,8 +242,8 @@ def doSimilarityFusionWs(Ws, K = 5, NIters = 20, regDiag = 1, regNeighbs = 0.5, 
         FusedScores += Pt
     return FusedScores/N
 
-def doSimilarityFusion(Scores, K = 5, NIters = 20, regDiag = 1, \
-        regNeighbs = 0.5, doPlot = False, PlotNames = [], PlotExtents = None):
+def doSimilarityFusion(Scores, K = 5, niters = 20, reg_diag = 1, \
+        reg_neighbs = 0.5, do_animation = False, PlotNames = [], PlotExtents = None):
     """
     Do similarity fusion on a set of NxN distance matrices.
     Parameters the same as doSimilarityFusionWs
@@ -248,8 +251,8 @@ def doSimilarityFusion(Scores, K = 5, NIters = 20, regDiag = 1, \
     """
     #Affinity matrices
     Ws = [getW(D, K) for D in Scores]
-    return (Ws, doSimilarityFusionWs(Ws, K, NIters, regDiag, regNeighbs, \
-                    doPlot, PlotNames, PlotExtents))
+    return (Ws, doSimilarityFusionWs(Ws, K, niters, reg_diag, reg_neighbs, \
+                    do_animation, PlotNames, PlotExtents))
 
 #Synthetic example
 if __name__ == "__main__":
@@ -278,6 +281,6 @@ if __name__ == "__main__":
     plt.imshow(D2)
     plt.show()
 
-    doSimilarityFusion([D1, D2], K = 5, NIters = 20, regDiag = 1, \
-                         regNeighbs = 0, doPlot = True, PlotNames = ["D1", "D2"])
+    doSimilarityFusion([D1, D2], K = 5, niters = 20, reg_diag = 1, \
+                         reg_neighbs = 0, do_animation = True, PlotNames = ["D1", "D2"])
 
