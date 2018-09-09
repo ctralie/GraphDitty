@@ -1,7 +1,13 @@
 //Programmer: Chris Tralie
-//Purpose: To provide a canvas for drawing a self-similarity matrix synchronized
-//with the music
 
+/** A canvas for drawing a self-similarity matrix synchronized with audio */
+
+/**
+ * Create a structure canvas
+ * @param {object} audio_obj - A dictionary of audio parameters, including 
+ * 	a handle to the audio widget, an array of times of each window,
+ *  and an array of the current index into the time array
+ */
 function StructureCanvas(audio_obj) {
 	this.ssmcanvas = document.getElementById('SimilarityCanvas');
     this.eigcanvas = document.getElementById('EigCanvas');
@@ -11,6 +17,12 @@ function StructureCanvas(audio_obj) {
 	this.EigImage = new Image;
 	this.audio_obj = audio_obj;
 
+	/**
+	 * A function use to update the images on the canvas and to
+	 * resize things accordingly
+	 * @param {object} params : A dictionary of parameters returned
+	 * from the Python program as a JSON file
+	 */
 	this.updateParams = function(params) {
 		this.CSImage.src = params.W;
 		this.audio_obj.audio_widget.style.width = this.CSImage.width;
@@ -26,6 +38,12 @@ function StructureCanvas(audio_obj) {
 		requestAnimationFrame(this.repaint.bind(this));
 	}
 
+	/**
+	 * A click release handler that is used to seek through the self-similarity 
+	 * canvas and to seek to the corresponding position in audio.
+	 * Left click seeks to the row and right click seeks to the column
+	 * @param {*} evt: Event handler 
+	 */
 	this.releaseClickSSM = function(evt) {
 		evt.preventDefault();
 		var offset1idx = evt.offsetY;
@@ -53,6 +71,11 @@ function StructureCanvas(audio_obj) {
 		return false;
 	}
 	
+	/**
+	 * A click release handler that is used to seek through the Laplacian eigenvector
+	 * canvas and to seek to the corresponding position in audio
+	 * @param {*} evt: Event handler 
+	 */
 	this.releaseClickEig = function(evt) {
 		evt.preventDefault();
 		this.audio_obj.offsetidx = evt.offsetX;
@@ -61,16 +84,19 @@ function StructureCanvas(audio_obj) {
 		return false;
 	}
 	
-	this.makeClick = function(evt) {
+	/**
+	 * An event handler that does nothing
+	 * @param {*} evt 
+	 */
+	this.dummyHandler = function(evt) {
 		evt.preventDefault();
 		return false;
 	}
 	
-	this.clickerDragged = function(evt) {
-		evt.preventDefault();
-		return false;
-	}
-	
+	/**
+	 * A fuction wich renders the SSM and laplacian eigenvectors
+	 * with lines superimposed to show where the audio is
+	 */
 	this.drawCanvas = function() {
 		if (!this.CSImage.complete || !this.EigImage.complete) {
 			//Keep requesting redraws until the image has actually loaded
@@ -96,6 +122,12 @@ function StructureCanvas(audio_obj) {
 		}
 	}
 	
+	/**
+	 * A function that should be called in conjunction with requestionAnimationFrame
+	 * to refresh this canvas.  Continually generates callbacks as long as the
+	 * audio is playing, but stops generating callbacks when it is paused to save
+	 * computation
+	 */
 	this.repaint = function() {
 		var t = this.audio_obj.audio_widget.currentTime;
 		while (this.audio_obj.times[this.audio_obj.offsetidx] < t && 
@@ -110,10 +142,10 @@ function StructureCanvas(audio_obj) {
 
 	this.initDummyListeners = function(canvas) {
 		canvas.addEventListener("contextmenu", function(e){ e.stopPropagation(); e.preventDefault(); return false; }); //Need this to disable the menu that pops up on right clicking
-		canvas.addEventListener('mousedown', this.makeClick.bind(this));
-		canvas.addEventListener('mousemove', this.clickerDragged.bind(this));
-		canvas.addEventListener('touchstart', this.makeClick.bind(this));
-		canvas.addEventListener('touchmove', this.clickerDragged.bind(this));
+		canvas.addEventListener('mousedown', this.dummyHandler.bind(this));
+		canvas.addEventListener('mousemove', this.dummyHandler.bind(this));
+		canvas.addEventListener('touchstart', this.dummyHandler.bind(this));
+		canvas.addEventListener('touchmove', this.dummyHandler.bind(this));
 		canvas.addEventListener('contextmenu', function dummy(e) { return false });
 	}
 	
