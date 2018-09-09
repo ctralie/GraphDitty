@@ -29,25 +29,3 @@ function setLoadingFailed() {
     loading = false;
     waitingDisp.innerHTML = "<h3><font color = \"red\">Loading Failed :(</font></h3>";
 }
-
-//Base64 Functions
-//http://stackoverflow.com/questions/21797299/convert-base64-string-to-arraybuffer
-function base64ToArrayBuffer(base64) {
-    var binary =  window.atob(base64);
-    var len = binary.length;
-    var bytes = new Uint8Array( len );
-    for (var i = 0; i < len; i++)        {
-        bytes[i] = binary.charCodeAt(i);
-    }
-    return bytes.buffer;
-}
-
-function ArrayBufferTobase64(arrayBuff) {
-    var binary = '';
-    var bytes = new Uint8Array(arrayBuff);
-    var N = bytes.byteLength;
-    for (var i = 0; i < N; i++) {
-        binary += String.fromCharCode(bytes[i]);
-    }
-    return window.btoa(binary);
-}

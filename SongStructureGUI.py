@@ -5,18 +5,18 @@ import os
 import scipy.misc
 import matplotlib.pyplot as plt
 import json
-
+import base64
 
 def getBase64File(filename):
     fin = open(filename, "rb")
     b = fin.read()
-    b = b.encode("base64")
+    b = base64.b64encode(b)
     fin.close()
-    return b
+    return b.decode("ASCII")
 
 def getBase64PNGImage(pD, cmapstr, logfloor = 0):
     """
-    Get an image as a 
+    Get an image as a base64 string
     """
     D = np.array(pD)
     if logfloor > 0:
@@ -28,7 +28,7 @@ def getBase64PNGImage(pD, cmapstr, logfloor = 0):
     scipy.misc.imsave("temp.png", C)
     b = getBase64File("temp.png")
     os.remove("temp.png")
-    return b
+    return "data:image/png;base64, " + b
 
 #http://stackoverflow.com/questions/1447287/format-floats-with-standard-json-module
 class PrettyFloat(float):
@@ -47,7 +47,8 @@ def saveResultsJSON(filename, times, W, v, jsonfilename):
     Results = {'songname':filename, 'times':times.tolist()}
     print("Saving results...")
     #Add music as base64 files
-    Results['audiofile'] = getBase64File(filename)
+    path, ext = os.path.splitext(filename)
+    Results['audio'] = "data:audio/%s;base64, "%ext[1::] + getBase64File(filename)
     WOut = np.array(W)
     np.fill_diagonal(WOut, 0)
     Results['W'] = getBase64PNGImage(WOut, 'afmhot', 5e-2)
@@ -61,3 +62,9 @@ def saveResultsJSON(filename, times, W, v, jsonfilename):
     fout = open(jsonfilename, "w")
     fout.write(json.dumps(Results))
     fout.close()
+
+if __name__ == '__main__':
+    filename = "MJ.mp3"
+    path, ext = os.path.splitext(filename)
+    res = "data:audio/%s;base64, "%ext[1::] + getBase64File(filename)
+    print(res)

@@ -3,12 +3,8 @@
 //with the music
 var CSImage = new Image;
 var EigImage = new Image;
-var ssmctx;
-var offset = 0;
+var ssmctx; 
 var offsetidx = 0;
-var startTime = 0;
-var offsetTime = 0;
-var playIdxSSM = 0;
 
 //Functions to handle mouse motion
 
@@ -34,26 +30,16 @@ function releaseClickSSM(evt) {
 	else {
 	    offsetidx = offset2idx;
 	}
-    if (playing) {
-        source.stop();
-        playAudio();
-    }
-    else {
-    	redrawSSMCanvas();
-    }
+	audio.currentTime = times[offsetidx];
+	redrawSSMCanvas();
 	return false;
 }
 
 function releaseClickEig(evt) {
 	evt.preventDefault();
 	offsetidx = evt.offsetX;
-    if (playing) {
-        source.stop();
-        playAudio();
-    }
-    else {
-    	redrawSSMCanvas();
-    }
+	audio.currentTime = times[offsetidx];
+	redrawSSMCanvas();
 	return false;
 }
 
@@ -121,15 +107,12 @@ function redrawSSMCanvas() {
 }
 
 function updateSSMCanvas() {
-	var t = context.currentTime - startTime + offsetTime;
-	timeTxt.innerHTML = Number.parseFloat(t).toFixed(2) + " sec";
-
-	while (times[playIdxSSM] < t && playIdxSSM < times.length - 1) {
-		playIdxSSM++;
+	var t = audio.currentTime;
+	while (times[offsetidx] < t && offsetidx < times.length - 1) {
+		offsetidx++;
 	}
-	offsetidx = playIdxSSM;
 	redrawSSMCanvas();
-	if (playing) {
+	if (!audio.paused) {
 		requestAnimationFrame(updateSSMCanvas);
 	}
 }
