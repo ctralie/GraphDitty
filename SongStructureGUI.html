@@ -92,7 +92,9 @@ body {
             times = Results.times;
             songname = Results.songname;
             CSImage.src = "data:image/png;base64, " + Results.W;
-            EigImage.src = "data:image/png;base64, " + Results.v;
+            if ('v' in Results) {
+                EigImage.src = "data:image/png;base64, " + Results.v;
+            }
             dimsUpdated = 0;
             requestAnimationFrame(updateSSMCanvas);
 
