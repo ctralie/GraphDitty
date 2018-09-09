@@ -32,7 +32,7 @@ body {
 
 <table>
 <tr>
-    <td><audio id="audio_main" controls></audio></td>
+    <td><audio id="audio_widget" controls></audio></td>
 </tr>
 
 <tr>
@@ -58,47 +58,40 @@ body {
 
 <script>
     //https://www.w3schools.com/tags/ref_av_dom.asp
-    var audio = document.getElementById("audio_main");
+    var audio_obj = {'audio_widget':document.getElementById("audio_widget"), 
+                                'times':[], 'offsetidx':0};
+    audio_obj.audio_widget.style.width = 800;
     var waitingDisp = document.getElementById("pagestatus");
     var playing = false;
     var songnameTxt = document.getElementById("songname");
-    var ssmcanvas = document.getElementById('SimilarityCanvas');
-    var eigcanvas = document.getElementById('EigCanvas');
-    var dimsUpdated = false;
 
-    ssmctx = ssmcanvas.getContext('2d');
-    eigctx = eigcanvas.getContext('2d');
-	initCanvasHandlers();
+    //Initialize canvases
+    var stcanvas = new StructureCanvas(audio_obj);
 
     var fileInput = document.getElementById('fileInput');
 	fileInput.addEventListener('change', function(e) {
 		var file = fileInput.files[0];
 		var reader = new FileReader();
 		reader.onload = function(e) {
-            var Results = JSON.parse(reader.result);
+            var params = JSON.parse(reader.result);
             //Setup audio buffers
-            audio.src = Results.audio;
-            times = Results.times;
-            songnameTxt.innerHTML = Results.songname;
-            CSImage.src = Results.W;
-            if ('v' in Results) {
-                EigImage.src = Results.v;
-            }
-            dimsUpdated = 0;
-            offsetidx = 0;
-            requestAnimationFrame(updateSSMCanvas);
+            audio_obj.audio_widget.src = params.audio;
+            audio_obj.times = params.times;
+            audio_obj.offsetidx = 0;
+            songnameTxt.innerHTML = params.songname;
+            stcanvas.updateParams(params);
+            
             changeToReady();
 		}
 		reader.readAsText(file);
     });
     
     coldStartAudio = function() {
-        offsetidx = 0;
-        requestAnimationFrame(updateSSMCanvas);
+        requestAnimationFrame(stcanvas.repaint.bind(stcanvas));
     }
-    audio.addEventListener("play", coldStartAudio);
-    audio.addEventListener("pause", coldStartAudio);
-    audio.addEventListener("seek", coldStartAudio);
+    audio_obj.audio_widget.addEventListener("play", coldStartAudio);
+    audio_obj.audio_widget.addEventListener("pause", coldStartAudio);
+    audio_obj.audio_widget.addEventListener("seek", coldStartAudio);
 </script>
 
 
