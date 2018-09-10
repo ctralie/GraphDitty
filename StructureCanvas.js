@@ -13,8 +13,18 @@ function StructureCanvas(audio_obj) {
     this.eigcanvas = document.getElementById('EigCanvas');
 	this.ssmctx = this.ssmcanvas.getContext('2d');
     this.eigctx = this.eigcanvas.getContext('2d');
-	this.CSImage = new Image;
-	this.EigImage = new Image;
+	this.CSImage = new Image();
+	this.EigImage = new Image();
+	this.CSImageReady = false;
+	this.EigImageReady = false;
+	this.CSImage.onload = function() {
+		this.CSImageReady = true;
+		requestAnimationFrame(this.repaint.bind(this));
+	}.bind(this);
+	this.EigImage.onload = function() {
+		this.EigImageReady = true;
+		requestAnimationFrame(this.repaint.bind(this));
+	}.bind(this);
 	this.audio_obj = audio_obj;
 
 	/**
@@ -94,7 +104,7 @@ function StructureCanvas(audio_obj) {
 	}
 	
 	/**
-	 * A fuction wich renders the SSM and laplacian eigenvectors
+	 * A fuction which renders the SSM and laplacian eigenvectors
 	 * with lines superimposed to show where the audio is
 	 */
 	this.drawCanvas = function() {
@@ -103,9 +113,12 @@ function StructureCanvas(audio_obj) {
 			requestAnimationFrame(this.repaint.bind(this));
 		}
 		else {
-			this.ssmctx.drawImage(this.CSImage, 0, 0);
-			this.eigctx.drawImage(this.EigImage, 0, 0);
-			
+			if (this.CSImageReady) {
+				this.ssmctx.drawImage(this.CSImage, 0, 0);
+			}
+			if (this.EigImageReady) {
+				this.eigctx.drawImage(this.EigImage, 0, 0);
+			}
 			this.ssmctx.beginPath();
 			this.ssmctx.moveTo(0, this.audio_obj.offsetidx);
 			this.ssmctx.lineTo(this.CSImage.width, this.audio_obj.offsetidx);

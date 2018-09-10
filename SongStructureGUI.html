@@ -87,6 +87,7 @@ body {
     });
     
     coldStartAudio = function() {
+        audio_obj.offsetidx = 0;
         requestAnimationFrame(stcanvas.repaint.bind(stcanvas));
     }
     audio_obj.audio_widget.addEventListener("play", coldStartAudio);
