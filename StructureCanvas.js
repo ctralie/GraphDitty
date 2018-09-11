@@ -13,13 +13,13 @@ function StructureCanvas(audio_obj) {
     this.eigcanvas = d3.select("#EigCanvas");
 	this.CSImage = this.ssmcanvas.append('image');
 	this.ssmlinehoriz = this.ssmcanvas.append('line')
-			.attr('x1', 0).attr('x2', 800)
+			.attr('x1', 0).attr('x2', 0)
 			.attr('y1', 0).attr('y2', 0)
 			.attr('stroke-width', 2)
 			.attr('stroke', 'cyan');
 	this.ssmlinevert = this.ssmcanvas.append('line')
 			.attr('x1', 0).attr('x2', 0)
-			.attr('y1', 0).attr('y2', 800)
+			.attr('y1', 0).attr('y2', 0)
 			.style('fill', 'cyan')
 			.attr('stroke-width', 2)
 			.attr('stroke', 'cyan');
@@ -115,10 +115,12 @@ function StructureCanvas(audio_obj) {
 	 * with lines superimposed to show where the audio is
 	 */
 	this.drawCanvas = function() {
-		var t = this.audio_obj.audio_widget.currentTime / this.audio_obj.time_interval;
-		this.ssmlinehoriz.attr('y1', t).attr('y2', t);
-		this.ssmlinevert.attr('x1', t).attr('x2', t);
-		this.eiglinevert.attr('x1', t).attr('x2', t);
+		if (this.audio_obj.time_interval > 0) {
+			var t = this.audio_obj.audio_widget.currentTime / this.audio_obj.time_interval;
+			this.ssmlinehoriz.attr('y1', t).attr('y2', t);
+			this.ssmlinevert.attr('x1', t).attr('x2', t);
+			this.eiglinevert.attr('x1', t).attr('x2', t);
+		}
 	};
 	
 	/**
