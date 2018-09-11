@@ -3,12 +3,8 @@
     <script src="jslibs/d3.min.js"></script>
     <script src="UtilityFunctions.js"></script>
     <script src="StructureCanvas.js"></script>
-    <style>
-        body {
-            background-color: #202020;
-            color:#CCCCCC;
-        }
-    </style>
+    <script src="ForceCanvas.js"></script>
+    <link rel="stylesheet" href="styles.css">
     </head>
 <body>
 
@@ -40,13 +36,23 @@
 
 <tr>
     <td>
-        <svg id="SimilarityCanvas" width="800" height="700"></svg>
+        <div class="tabmenu">
+            
+        </div>
+                  
     </td>
 </tr>
 
 <tr>
     <td>
-        <svg id="EigCanvas" width="800" height="10"></svg>
+        <div id="SSMCanvas">
+            <svg id="SimilarityCanvas" width="800" height="700"></svg><BR>
+            <svg id="EigCanvas" width="800" height="10"></svg>
+        </div>
+
+        <div id="ForceCanvas">
+            
+        </div>
     </td>
 </tr>
 
@@ -61,11 +67,39 @@
                                 'time_interval':0, 'dim':0};
     audio_obj.audio_widget.style.width = 800;
     var waitingDisp = document.getElementById("pagestatus");
-    var playing = false;
     var songnameTxt = document.getElementById("songname");
 
-    //Initialize canvases
+    // Step 2: Initialize canvases
     var stcanvas = new StructureCanvas(audio_obj);
+    var fcanvas = new ForceCanvas(audio_obj);
+
+    // Step 3: Setup Tabs
+    changeTab = function(tab, i) {
+        d3.select('.tabmenu').selectAll('button')
+          .attr("class", function(d) {
+            /* Change display style of active tab relative to others */
+            if (d == tab) {
+                return "active";
+            }
+            return "";
+          })
+          .each(function(d) {
+            /* Hide inactive tabs */
+            if (d == tab) {
+                d.canvas.show()
+            }
+            else {
+                d.canvas.hide();
+            }
+          });
+    };
+    var data = [{name:"Self-Similarity", canvas:stcanvas}, 
+            {name:"Force Graph", canvas:fcanvas}];
+    d3.select('.tabmenu').selectAll("button")
+					   .data(data)
+                       .enter().append("button").on('click', changeTab)
+                       .text(function (d) {return d.name});
+
 
     var fileInput = document.getElementById('fileInput');
 	fileInput.addEventListener('change', function(e) {
@@ -79,6 +113,7 @@
             audio_obj.dim = params.dim;
             songnameTxt.innerHTML = params.songname;
             stcanvas.updateParams(params);
+            fcanvas.updateParams(params);
             
             changeToReady();
 		}

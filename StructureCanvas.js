@@ -58,6 +58,24 @@ function StructureCanvas(audio_obj) {
 	};
 
 	/**
+	 * A function which toggles all of the visible elements to show
+	 */
+	this.show = function() {
+		console.log("Showing SSM display");
+		this.ssmcanvas.style("display", "block");
+		this.eigcanvas.style("display", "block");
+	};
+
+	/**
+	 * A function which toggles all of the visible elements to hide
+	 */
+	this.hide = function() {
+		console.log("Hiding SSM display");
+		this.ssmcanvas.style("display", "none");
+		this.eigcanvas.style("display", "none");
+	};
+
+	/**
 	 * A click release handler that is used to seek through the self-similarity 
 	 * canvas and to seek to the corresponding position in audio.
 	 * Left click seeks to the row and right click seeks to the column
