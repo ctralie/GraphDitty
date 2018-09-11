@@ -5,8 +5,8 @@
 /**
  * Create a structure canvas
  * @param {object} audio_obj - A dictionary of audio parameters, including 
- * 	a handle to the audio widget, an array of times of each window,
- *  and an array of the current index into the time array
+ * 	a handle to the audio widget and a time interval between adjacent rows
+ *  of the SSM, and the dimension "dim" of the SSM
  */
 function StructureCanvas(audio_obj) {
 	this.ssmcanvas = d3.select("#SimilarityCanvas");
@@ -114,7 +114,7 @@ function StructureCanvas(audio_obj) {
 	 * A fuction which renders the SSM and laplacian eigenvectors
 	 * with lines superimposed to show where the audio is
 	 */
-	this.drawCanvas = function() {
+	this.updateCanvas = function() {
 		if (this.audio_obj.time_interval > 0) {
 			var t = this.audio_obj.audio_widget.currentTime / this.audio_obj.time_interval;
 			this.ssmlinehoriz.attr('y1', t).attr('y2', t);
@@ -130,7 +130,7 @@ function StructureCanvas(audio_obj) {
 	 * computation
 	 */
 	this.repaint = function() {
-		this.drawCanvas();
+		this.updateCanvas();
 		if (!this.audio_obj.audio_widget.paused) {
 			requestAnimationFrame(this.repaint.bind(this));
 		}
