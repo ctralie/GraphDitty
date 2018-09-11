@@ -116,5 +116,5 @@ if __name__ == '__main__':
         K=opt.K, reg_diag=opt.reg_diag, reg_neighbs=opt.reg_neighbs, niters=opt.niters, \
         neigs=opt.neigs, do_animation=opt.do_animation, plot_result=opt.plot_result)
     sio.savemat(opt.matfilename, res)
-    saveResultsJSON(opt.filename, res['time_interval'], res['WFused'], res['v'], opt.jsonfilename)
+    saveResultsJSON(opt.filename, res['time_interval'], res['WFused'], opt.K, res['v'], opt.jsonfilename)
     

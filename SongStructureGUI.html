@@ -45,13 +45,13 @@
 
 <tr>
     <td>
-        <div id="SSMCanvas">
+        <div id="SSMContainer">
             <svg id="SimilarityCanvas" width="800" height="700"></svg><BR>
             <svg id="EigCanvas" width="800" height="10"></svg>
         </div>
 
-        <div id="ForceCanvas">
-            
+        <div id="ForceContainer">
+            <svg id="ForceCanvas" width = "800" height = "800"></svg>
         </div>
     </td>
 </tr>
@@ -77,14 +77,16 @@
     changeTab = function(tab, i) {
         d3.select('.tabmenu').selectAll('button')
           .attr("class", function(d) {
-            /* Change display style of active tab relative to others */
+            // Change display style of active tab relative to others
             if (d == tab) {
+                d.active = true;
                 return "active";
             }
+            d.active = false;
             return "";
           })
           .each(function(d) {
-            /* Hide inactive tabs */
+            // Hide inactive tabs
             if (d == tab) {
                 d.canvas.show()
             }
@@ -92,15 +94,25 @@
                 d.canvas.hide();
             }
           });
+          refreshDisplays();
     };
-    var data = [{name:"Self-Similarity", canvas:stcanvas}, 
-            {name:"Force Graph", canvas:fcanvas}];
+    var tabdata = [{name:"Self-Similarity", canvas:stcanvas, active:false}, 
+            {name:"Force Graph", canvas:fcanvas, active:false}];
     d3.select('.tabmenu').selectAll("button")
-					   .data(data)
+					   .data(tabdata)
                        .enter().append("button").on('click', changeTab)
-                       .text(function (d) {return d.name});
+                       .text(function (d) {return d.name})
+                       .attr('class', function(d, i) {
+                           if (i == 0) {
+                               return "active";
+                           }
+                           return "";
+                       });
+    // By default, show SSM canvas
+    stcanvas.show();
+    fcanvas.hide();
 
-
+    // Step 4: Setup file input
     var fileInput = document.getElementById('fileInput');
 	fileInput.addEventListener('change', function(e) {
 		var file = fileInput.files[0];
@@ -114,6 +126,7 @@
             songnameTxt.innerHTML = params.songname;
             stcanvas.updateParams(params);
             fcanvas.updateParams(params);
+            refreshDisplays();
             
             changeToReady();
 		}
@@ -121,7 +134,11 @@
     });
     
     refreshDisplays = function() {
-        requestAnimationFrame(stcanvas.repaint.bind(stcanvas));
+        for (i = 0; i < tabdata.length; i++) {
+            if (tabdata[i].active) {
+                requestAnimationFrame(tabdata[i].canvas.repaint.bind(tabdata[i].canvas));
+            }
+        }
     }
     audio_obj.audio_widget.addEventListener("play", refreshDisplays);
     audio_obj.audio_widget.addEventListener("pause", refreshDisplays);

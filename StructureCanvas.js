@@ -54,14 +54,12 @@ function StructureCanvas(audio_obj) {
 		}
 		this.ssmcanvas.attr('width', params.dim)
 					  .attr('height', params.dim);
-		requestAnimationFrame(this.repaint.bind(this));
 	};
 
 	/**
 	 * A function which toggles all of the visible elements to show
 	 */
 	this.show = function() {
-		console.log("Showing SSM display");
 		this.ssmcanvas.style("display", "block");
 		this.eigcanvas.style("display", "block");
 	};
@@ -70,7 +68,6 @@ function StructureCanvas(audio_obj) {
 	 * A function which toggles all of the visible elements to hide
 	 */
 	this.hide = function() {
-		console.log("Hiding SSM display");
 		this.ssmcanvas.style("display", "none");
 		this.eigcanvas.style("display", "none");
 	};
@@ -143,9 +140,9 @@ function StructureCanvas(audio_obj) {
 	
 	/**
 	 * A function that should be called in conjunction with requestionAnimationFrame
-	 * to refresh this canvas.  Continually generates callbacks as long as the
-	 * audio is playing, but stops generating callbacks when it is paused to save
-	 * computation
+	 * to refresh this canvas so that it is properly synchronized with the audio as it plays.  
+	 * It continually generates callbacks as long as the audio is playing, but stops generating 
+	 * callbacks when it is paused, to save computation.
 	 */
 	this.repaint = function() {
 		this.updateCanvas();
