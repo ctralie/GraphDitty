@@ -1,14 +1,15 @@
 <html>
 <head>
-<script src="UtilityFunctions.js"></script>
-<script src="StructureCanvas.js"></script>
-<style>
-body {
-    background-color: #202020;
-    color:#CCCCCC;
-}
-</style>
-</head>
+    <script src="jslibs/d3.min.js"></script>
+    <script src="UtilityFunctions.js"></script>
+    <script src="StructureCanvas.js"></script>
+    <style>
+        body {
+            background-color: #202020;
+            color:#CCCCCC;
+        }
+    </style>
+    </head>
 <body>
 
 <h1>Song Structure GUI</h1>
@@ -28,8 +29,6 @@ body {
 <tr><td><h3>File Input</h3></td><td><input type = "file" id = "fileInput"></td><td colspan = "2"></td></tr>
 </table>
 
-
-
 <table>
 <tr>
     <td><audio id="audio_widget" controls></audio></td>
@@ -41,13 +40,13 @@ body {
 
 <tr>
     <td>
-        <canvas id="SimilarityCanvas" width="800" height="700">
+        <svg id="SimilarityCanvas" width="800" height="700"></svg>
     </td>
 </tr>
 
 <tr>
     <td>
-        <canvas id="EigCanvas" width="800" height="100">
+        <svg id="EigCanvas" width="800" height="10"></svg>
     </td>
 </tr>
 
@@ -59,7 +58,7 @@ body {
 <script>
     //https://www.w3schools.com/tags/ref_av_dom.asp
     var audio_obj = {'audio_widget':document.getElementById("audio_widget"), 
-                                'times':[], 'offsetidx':0};
+                                'time_interval':0, 'dim':0};
     audio_obj.audio_widget.style.width = 800;
     var waitingDisp = document.getElementById("pagestatus");
     var playing = false;
@@ -76,8 +75,8 @@ body {
             var params = JSON.parse(reader.result);
             //Setup audio buffers
             audio_obj.audio_widget.src = params.audio;
-            audio_obj.times = params.times;
-            audio_obj.offsetidx = 0;
+            audio_obj.time_interval = params.time_interval;
+            audio_obj.dim = params.dim;
             songnameTxt.innerHTML = params.songname;
             stcanvas.updateParams(params);
             
@@ -86,13 +85,11 @@ body {
 		reader.readAsText(file);
     });
     
-    coldStartAudio = function() {
-        audio_obj.offsetidx = 0;
+    refreshDisplays = function() {
         requestAnimationFrame(stcanvas.repaint.bind(stcanvas));
     }
-    audio_obj.audio_widget.addEventListener("play", coldStartAudio);
-    audio_obj.audio_widget.addEventListener("pause", coldStartAudio);
-    audio_obj.audio_widget.addEventListener("seek", coldStartAudio);
+    audio_obj.audio_widget.addEventListener("play", refreshDisplays);
+    audio_obj.audio_widget.addEventListener("pause", refreshDisplays);
 </script>
 
 
