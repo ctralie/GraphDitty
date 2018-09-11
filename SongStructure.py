@@ -63,10 +63,9 @@ def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, reg
     #Run similarity network fusion
     FeatureNames = ['MFCCs', 'Chromas']
     Ds = [DMFCC, DChroma]
-    interval = hop_length*win_fac/float(sr)
-    times = interval*np.arange(DMFCC.shape[0])
-    print("Interval = %.3g Seconds, Block = %.3g Seconds"%(interval, interval*wins_per_block))
-    PlotExtents = [0, times[-1]]
+    time_interval = hop_length*win_fac/float(sr)
+    print("Interval = %.3g Seconds, Block = %.3g Seconds"%(time_interval, time_interval*wins_per_block))
+    PlotExtents = [0, time_interval*DMFCC.shape[0]]
     (Ws, WFused) = doSimilarityFusion(Ds, K=K, niters=niters, \
         reg_diag=reg_diag, reg_neighbs=reg_neighbs, \
         do_animation=do_animation, PlotNames=FeatureNames, \
@@ -90,8 +89,8 @@ def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, reg
         plt.ylabel("Time (sec)")
         plt.xlabel("Eigenvector Num")
         plt.show()
-    return {'Ws':Ws, 'WFused':WFused, 'times':times, 'v':v, \
-            'BlockLen':interval*wins_per_block, 'FeatureNames':FeatureNames}
+    return {'Ws':Ws, 'WFused':WFused, 'v':v, 'time_interval':time_interval,\
+            'BlockLen':time_interval*wins_per_block, 'FeatureNames':FeatureNames}
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -117,5 +116,5 @@ if __name__ == '__main__':
         K=opt.K, reg_diag=opt.reg_diag, reg_neighbs=opt.reg_neighbs, niters=opt.niters, \
         neigs=opt.neigs, do_animation=opt.do_animation, plot_result=opt.plot_result)
     sio.savemat(opt.matfilename, res)
-    saveResultsJSON(opt.filename, res['times'], res['WFused'], res['v'], opt.jsonfilename)
+    saveResultsJSON(opt.filename, res['time_interval'], res['WFused'], res['v'], opt.jsonfilename)
     

@@ -43,8 +43,8 @@ def pretty_floats(obj):
         return map(pretty_floats, obj)
     return obj
 
-def saveResultsJSON(filename, times, W, v, jsonfilename):
-    Results = {'songname':filename, 'times':times.tolist()}
+def saveResultsJSON(filename, time_interval, W, v, jsonfilename):
+    Results = {'songname':filename, 'time_interval':time_interval}
     print("Saving results...")
     #Add music as base64 files
     path, ext = os.path.splitext(filename)
@@ -56,7 +56,7 @@ def saveResultsJSON(filename, times, W, v, jsonfilename):
     
     # Resize the eigenvectors so they're easier to see
     fac = 10
-    vout = np.zeros((v.shape[1]*10, v.shape[0]))
+    vout = np.zeros((v.shape[1]*fac, v.shape[0]))
     for i in range(fac):
         vout[i::fac, :] = v.T
     Results['v'] = getBase64PNGImage(vout, 'afmhot')

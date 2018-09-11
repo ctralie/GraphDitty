@@ -15,16 +15,20 @@ function StructureCanvas(audio_obj) {
 	this.ssmlinehoriz = this.ssmcanvas.append('line')
 			.attr('x1', 0).attr('x2', 800)
 			.attr('y1', 0).attr('y2', 0)
-			.style('fill', 'cyan');
+			.attr('stroke-width', 2)
+			.attr('stroke', 'cyan');
 	this.ssmlinevert = this.ssmcanvas.append('line')
 			.attr('x1', 0).attr('x2', 0)
 			.attr('y1', 0).attr('y2', 800)
-			.style('fill', 'cyan');
+			.style('fill', 'cyan')
+			.attr('stroke-width', 2)
+			.attr('stroke', 'cyan');
 	this.EigImage = this.eigcanvas.append('image');
 	this.eiglinevert = this.eigcanvas.append('line')
 			.attr('x1', 0).attr('x2', 0)
-			.attr('y1', 0).attr('y2', 10)
-			.style('fill', 'cyan');
+			.attr('y1', 0).attr('y2', 0)
+			.attr('stroke-width', 2)
+			.attr('stroke', 'cyan');
 	this.audio_obj = audio_obj;
 
 	/**
@@ -38,12 +42,15 @@ function StructureCanvas(audio_obj) {
 					.attr('width', params.dim)
 					.attr('height', params.dim);
 		this.audio_obj.audio_widget.style.width = params.dim;
+		this.ssmlinehoriz.attr('x2', params.dim);
+		this.ssmlinevert.attr('y2', params.dim);
 		if ('v' in params) {
 			this.EigImage.attr('href', params.v)
 						 .attr('width', params.dim)
 						 .attr('height', params.v_height);
 			this.eigcanvas.attr('width', params.dim)
 						  .attr('height', params.v_height);
+			this.eiglinevert.attr('y2', params.dim);
 		}
 		this.ssmcanvas.attr('width', params.dim)
 					  .attr('height', params.dim);
@@ -60,6 +67,7 @@ function StructureCanvas(audio_obj) {
 		evt.preventDefault();
 		var offset1idx = evt.offsetY;
 		var offset2idx = evt.offsetX;
+		var offsetidx = 0;
 	
 		clickType = "LEFT";
 		evt.preventDefault();
@@ -71,14 +79,13 @@ function StructureCanvas(audio_obj) {
 			if (evt.button == 2) clickType = "RIGHT";
 			if (evt.button == 4) clickType = "MIDDLE";
 		}
-	
 		if (clickType == "LEFT") {
-			this.audio_obj.offsetidx = offset1idx;
+			offsetidx = offset1idx;
 		}
 		else {
-			this.audio_obj.offsetidx = offset2idx;
+			offsetidx = offset2idx;
 		}
-		this.audio_obj.audio_widget.currentTime = this.audio_obj.times[this.audio_obj.offsetidx];
+		this.audio_obj.audio_widget.currentTime = this.audio_obj.time_interval*offsetidx;
 		this.repaint();
 		return false;
 	};
@@ -90,8 +97,7 @@ function StructureCanvas(audio_obj) {
 	 */
 	this.releaseClickEig = function(evt) {
 		evt.preventDefault();
-		this.audio_obj.offsetidx = evt.offsetX;
-		this.audio_obj.audio_widget.currentTime = this.audio_obj.times[this.audio_obj.offsetidx];
+		this.audio_obj.audio_widget.currentTime = evt.offsetX*this.audio_obj.time_interval;
 		this.repaint();
 		return false;
 	};
@@ -109,12 +115,10 @@ function StructureCanvas(audio_obj) {
 	 * with lines superimposed to show where the audio is
 	 */
 	this.drawCanvas = function() {
-		this.ssmlinehoriz.attr('y1', this.audio_obj.offsetidx)
-						 .attr('y2', this.audio_obj.offsetidx);
-		this.ssmlinevert.attr('x1', this.audio_obj.offsetidx)
-						 .attr('x2', this.audio_obj.offsetidx);
-		this.eiglinevert.attr('x1', this.audio_obj.offsetidx)
-						 .attr('x2', this.audio_obj.offsetidx);
+		var t = this.audio_obj.audio_widget.currentTime / this.audio_obj.time_interval;
+		this.ssmlinehoriz.attr('y1', t).attr('y2', t);
+		this.ssmlinevert.attr('x1', t).attr('x2', t);
+		this.eiglinevert.attr('x1', t).attr('x2', t);
 	};
 	
 	/**
@@ -124,11 +128,6 @@ function StructureCanvas(audio_obj) {
 	 * computation
 	 */
 	this.repaint = function() {
-		var t = this.audio_obj.audio_widget.currentTime;
-		while (this.audio_obj.times[this.audio_obj.offsetidx] < t && 
-				this.audio_obj.offsetidx < this.audio_obj.times.length - 1) {
-			this.audio_obj.offsetidx++;
-		}
 		this.drawCanvas();
 		if (!this.audio_obj.audio_widget.paused) {
 			requestAnimationFrame(this.repaint.bind(this));
@@ -149,7 +148,7 @@ function StructureCanvas(audio_obj) {
 		this.initDummyListeners(canvas);
 		canvas.addEventListener('mouseup', this.releaseClickSSM.bind(this));
 		canvas.addEventListener('touchend', this.releaseClickSSM.bind(this));
-		canvas = document.getElementById('SimilarityCanvas');
+		canvas = document.getElementById('EigCanvas');
 		this.initDummyListeners(canvas);
 		canvas.addEventListener('mouseup', this.releaseClickEig.bind(this));
 		canvas.addEventListener('touchend', this.releaseClickEig.bind(this));
