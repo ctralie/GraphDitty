@@ -1,14 +1,15 @@
 <html>
 <head>
-<script src="UtilityFunctions.js"></script>
-<script src="StructureCanvas.js"></script>
-<style>
-body {
-    background-color: #202020;
-    color:#CCCCCC;
-}
-</style>
-</head>
+    <script src="jslibs/d3.min.js"></script>
+    <script src="UtilityFunctions.js"></script>
+    <script src="StructureCanvas.js"></script>
+    <style>
+        body {
+            background-color: #202020;
+            color:#CCCCCC;
+        }
+    </style>
+    </head>
 <body>
 
 <h1>Song Structure GUI</h1>
@@ -28,8 +29,6 @@ body {
 <tr><td><h3>File Input</h3></td><td><input type = "file" id = "fileInput"></td><td colspan = "2"></td></tr>
 </table>
 
-
-
 <table>
 <tr>
     <td><audio id="audio_widget" controls></audio></td>
@@ -41,13 +40,13 @@ body {
 
 <tr>
     <td>
-        <canvas id="SimilarityCanvas" width="800" height="700">
+        <svg id="SimilarityCanvas" width="800" height="700"></svg>
     </td>
 </tr>
 
 <tr>
     <td>
-        <canvas id="EigCanvas" width="800" height="100">
+        <svg id="EigCanvas" width="800" height="10"></svg>
     </td>
 </tr>
 

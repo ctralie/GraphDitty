@@ -52,6 +52,7 @@ def saveResultsJSON(filename, times, W, v, jsonfilename):
     WOut = np.array(W)
     np.fill_diagonal(WOut, 0)
     Results['W'] = getBase64PNGImage(WOut, 'afmhot', 5e-2)
+    Results['dim'] = W.shape[0]
     
     # Resize the eigenvectors so they're easier to see
     fac = 10
@@ -59,6 +60,7 @@ def saveResultsJSON(filename, times, W, v, jsonfilename):
     for i in range(fac):
         vout[i::fac, :] = v.T
     Results['v'] = getBase64PNGImage(vout, 'afmhot')
+    Results['v_height'] = vout.shape[0]
     fout = open(jsonfilename, "w")
     fout.write(json.dumps(Results))
     fout.close()

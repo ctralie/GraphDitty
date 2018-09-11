@@ -9,22 +9,22 @@
  *  and an array of the current index into the time array
  */
 function StructureCanvas(audio_obj) {
-	this.ssmcanvas = document.getElementById('SimilarityCanvas');
-    this.eigcanvas = document.getElementById('EigCanvas');
-	this.ssmctx = this.ssmcanvas.getContext('2d');
-    this.eigctx = this.eigcanvas.getContext('2d');
-	this.CSImage = new Image();
-	this.EigImage = new Image();
-	this.CSImageReady = false;
-	this.EigImageReady = false;
-	this.CSImage.onload = function() {
-		this.CSImageReady = true;
-		requestAnimationFrame(this.repaint.bind(this));
-	}.bind(this);
-	this.EigImage.onload = function() {
-		this.EigImageReady = true;
-		requestAnimationFrame(this.repaint.bind(this));
-	}.bind(this);
+	this.ssmcanvas = d3.select("#SimilarityCanvas");
+    this.eigcanvas = d3.select("#EigCanvas");
+	this.CSImage = this.ssmcanvas.append('image');
+	this.ssmlinehoriz = this.ssmcanvas.append('line')
+			.attr('x1', 0).attr('x2', 800)
+			.attr('y1', 0).attr('y2', 0)
+			.style('fill', 'cyan');
+	this.ssmlinevert = this.ssmcanvas.append('line')
+			.attr('x1', 0).attr('x2', 0)
+			.attr('y1', 0).attr('y2', 800)
+			.style('fill', 'cyan');
+	this.EigImage = this.eigcanvas.append('image');
+	this.eiglinevert = this.eigcanvas.append('line')
+			.attr('x1', 0).attr('x2', 0)
+			.attr('y1', 0).attr('y2', 10)
+			.style('fill', 'cyan');
 	this.audio_obj = audio_obj;
 
 	/**
@@ -34,19 +34,21 @@ function StructureCanvas(audio_obj) {
 	 * from the Python program as a JSON file
 	 */
 	this.updateParams = function(params) {
-		this.CSImage.src = params.W;
-		this.audio_obj.audio_widget.style.width = this.CSImage.width;
+		this.CSImage.attr('href', params.W)
+					.attr('width', params.dim)
+					.attr('height', params.dim);
+		this.audio_obj.audio_widget.style.width = params.dim;
 		if ('v' in params) {
-			this.EigImage.src = params.v;
+			this.EigImage.attr('href', params.v)
+						 .attr('width', params.dim)
+						 .attr('height', params.v_height);
+			this.eigcanvas.attr('width', params.dim)
+						  .attr('height', params.v_height);
 		}
-		this.offsetidx = 0;
-		this.ssmcanvas.width = this.CSImage.width;
-		this.ssmcanvas.height = this.CSImage.height;
-		this.eigcanvas.width = this.EigImage.width;
-		this.eigcanvas.eight = this.EigImage.height;
-
+		this.ssmcanvas.attr('width', params.dim)
+					  .attr('height', params.dim);
 		requestAnimationFrame(this.repaint.bind(this));
-	}
+	};
 
 	/**
 	 * A click release handler that is used to seek through the self-similarity 
@@ -79,7 +81,7 @@ function StructureCanvas(audio_obj) {
 		this.audio_obj.audio_widget.currentTime = this.audio_obj.times[this.audio_obj.offsetidx];
 		this.repaint();
 		return false;
-	}
+	};
 	
 	/**
 	 * A click release handler that is used to seek through the Laplacian eigenvector
@@ -92,7 +94,7 @@ function StructureCanvas(audio_obj) {
 		this.audio_obj.audio_widget.currentTime = this.audio_obj.times[this.audio_obj.offsetidx];
 		this.repaint();
 		return false;
-	}
+	};
 	
 	/**
 	 * An event handler that does nothing
@@ -101,39 +103,19 @@ function StructureCanvas(audio_obj) {
 	this.dummyHandler = function(evt) {
 		evt.preventDefault();
 		return false;
-	}
-	
+	};
 	/**
 	 * A fuction which renders the SSM and laplacian eigenvectors
 	 * with lines superimposed to show where the audio is
 	 */
 	this.drawCanvas = function() {
-		if (!this.CSImage.complete || !this.EigImage.complete) {
-			//Keep requesting redraws until the image has actually loaded
-			requestAnimationFrame(this.repaint.bind(this));
-		}
-		else {
-			if (this.CSImageReady) {
-				this.ssmctx.drawImage(this.CSImage, 0, 0);
-			}
-			if (this.EigImageReady) {
-				this.eigctx.drawImage(this.EigImage, 0, 0);
-			}
-			this.ssmctx.beginPath();
-			this.ssmctx.moveTo(0, this.audio_obj.offsetidx);
-			this.ssmctx.lineTo(this.CSImage.width, this.audio_obj.offsetidx);
-			this.ssmctx.moveTo(this.audio_obj.offsetidx, 0);
-			this.ssmctx.lineTo(this.audio_obj.offsetidx, this.CSImage.height);
-			this.ssmctx.strokeStyle = '#00ffff';
-			this.ssmctx.stroke();
-			
-			this.eigctx.beginPath();
-			this.eigctx.moveTo(this.audio_obj.offsetidx, 0);
-			this.eigctx.lineTo(this.audio_obj.offsetidx, this.EigImage.height);
-			this.eigctx.strokeStyle = '#00ffff';
-			this.eigctx.stroke();
-		}
-	}
+		this.ssmlinehoriz.attr('y1', this.audio_obj.offsetidx)
+						 .attr('y2', this.audio_obj.offsetidx);
+		this.ssmlinevert.attr('x1', this.audio_obj.offsetidx)
+						 .attr('x2', this.audio_obj.offsetidx);
+		this.eiglinevert.attr('x1', this.audio_obj.offsetidx)
+						 .attr('x2', this.audio_obj.offsetidx);
+	};
 	
 	/**
 	 * A function that should be called in conjunction with requestionAnimationFrame
@@ -151,7 +133,7 @@ function StructureCanvas(audio_obj) {
 		if (!this.audio_obj.audio_widget.paused) {
 			requestAnimationFrame(this.repaint.bind(this));
 		}
-	}
+	};
 
 	this.initDummyListeners = function(canvas) {
 		canvas.addEventListener("contextmenu", function(e){ e.stopPropagation(); e.preventDefault(); return false; }); //Need this to disable the menu that pops up on right clicking
@@ -160,16 +142,18 @@ function StructureCanvas(audio_obj) {
 		canvas.addEventListener('touchstart', this.dummyHandler.bind(this));
 		canvas.addEventListener('touchmove', this.dummyHandler.bind(this));
 		canvas.addEventListener('contextmenu', function dummy(e) { return false });
-	}
+	};
 	
 	this.initCanvasHandlers = function() {
-		this.initDummyListeners(this.ssmcanvas);
-		this.ssmcanvas.addEventListener('mouseup', this.releaseClickSSM.bind(this));
-		this.ssmcanvas.addEventListener('touchend', this.releaseClickSSM.bind(this));
-		this.initDummyListeners(this.eigcanvas);
-		this.eigcanvas.addEventListener('mouseup', this.releaseClickEig.bind(this));
-		this.eigcanvas.addEventListener('touchend', this.releaseClickEig.bind(this));
-	}
+		var canvas = document.getElementById('SimilarityCanvas');
+		this.initDummyListeners(canvas);
+		canvas.addEventListener('mouseup', this.releaseClickSSM.bind(this));
+		canvas.addEventListener('touchend', this.releaseClickSSM.bind(this));
+		canvas = document.getElementById('SimilarityCanvas');
+		this.initDummyListeners(canvas);
+		canvas.addEventListener('mouseup', this.releaseClickEig.bind(this));
+		canvas.addEventListener('touchend', this.releaseClickEig.bind(this));
+	};
 
 	this.initCanvasHandlers();
 }
