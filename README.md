@@ -6,7 +6,7 @@ The purpose of this code is to compute clean weighted adjacency matrices for aud
 Christopher J Tralie. ``MFCC and HPCP fusion for robust cover song identification.'' In 18th International Society for Music Information Retrieval (ISMIR), 2017.
 
 ### Example Adjacency Matrix on Michael Jacksons's Bad
-<img src = "Paper/Figures/SimilarityMatrix_Laplacian.svg" alt = "Example Adjacency Matrix on Michael Jacksons's Bad">
+<img src = "Paper/Figures/SimilarityMatrix_Laplacian.png" alt = "Example Adjacency Matrix on Michael Jacksons's Bad">
 
 
 ## Dependencies
