@@ -20,23 +20,27 @@ function ForceCanvas(audio_obj) {
 	 * from the Python program as a JSON file
 	 */
 
+	 /** A callback function to handle start dragging on a node */
 	this.dragstarted = function(d) {
 		if (!d3.event.active) this.simulation.alphaTarget(0.3).restart();
 		d.fx = d.x;
 		d.fy = d.y;
 	};
 
+	/** A callback function to handle dragging on a node */
 	this.dragged = function(d) {
 		d.fx = d3.event.x;
 		d.fy = d3.event.y;
 	};
 
+	/** A callback function to handle drag release on a node */
 	this.dragended = function(d) {
 		if (!d3.event.active) this.simulation.alphaTarget(0);
 		d.fx = null;
 		d.fy = null;
 	};
 
+	/** A callback function to handle the animation */
 	this.ticked = function() {
 		this.links
 			.attr("x1", function(d) { return d.source.x; })
@@ -49,11 +53,17 @@ function ForceCanvas(audio_obj) {
 			.attr("cy", function(d) { return d.y; });
 	};
 
+	/** A callback function to handle zooming/panning */
 	this.zoomed = function() {
 		this.nodes.attr("transform", d3.event.transform);
 		this.links.attr("transform", d3.event.transform);
 	};
 
+	/**
+	 * Update the graph with information from a new song
+	 * @param {*} params: A dictionary of parameters for a newly loaded song,
+	 * including a graph object with all of the nodes, edges, and weights 
+	 */
 	this.updateParams = function(params) {
 		// With heavy inspiration from https://bl.ocks.org/mbostock/4062045
 		var width = params.dim;
@@ -65,7 +75,7 @@ function ForceCanvas(audio_obj) {
 							.force("center", d3.forceCenter(width / 2, height / 2));
 		
 		graph = JSON.parse(params.graph);
-		this.fac = graph.fac;
+		this.fac = graph.fac; // Downsample factor for nodes in the graph
 
 		// Clear all graph elements if any exist
 		this.graphcanvas.selectAll("*").remove();

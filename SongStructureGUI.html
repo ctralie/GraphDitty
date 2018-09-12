@@ -1,8 +1,8 @@
 <html>
 <head>
     <script src="jslibs/d3.min.js"></script>
-    <script src="UtilityFunctions.js"></script>
-    <script src="StructureCanvas.js"></script>
+    <script src="ProgressBar.js"></script>
+    <script src="SimilarityCanvas.js"></script>
     <script src="ForceCanvas.js"></script>
     <link rel="stylesheet" href="styles.css">
     </head>
@@ -61,88 +61,7 @@
 </td></tr>
 </table>
 
-<script>
-    //https://www.w3schools.com/tags/ref_av_dom.asp
-    var audio_obj = {'audio_widget':document.getElementById("audio_widget"), 
-                                'time_interval':0, 'dim':0};
-    audio_obj.audio_widget.style.width = 800;
-    var waitingDisp = document.getElementById("pagestatus");
-    var songnameTxt = document.getElementById("songname");
-
-    // Step 2: Initialize canvases
-    var stcanvas = new StructureCanvas(audio_obj);
-    var fcanvas = new ForceCanvas(audio_obj);
-
-    // Step 3: Setup Tabs
-    changeTab = function(tab, i) {
-        d3.select('.tabmenu').selectAll('button')
-          .attr("class", function(d) {
-            // Change display style of active tab relative to others
-            if (d == tab) {
-                d.active = true;
-                return "active";
-            }
-            d.active = false;
-            return "";
-          })
-          .each(function(d) {
-            // Hide inactive tabs
-            if (d == tab) {
-                d.canvas.show()
-            }
-            else {
-                d.canvas.hide();
-            }
-          });
-          refreshDisplays();
-    };
-    var tabdata = [{name:"Self-Similarity", canvas:stcanvas, active:false}, 
-            {name:"Force Graph", canvas:fcanvas, active:false}];
-    d3.select('.tabmenu').selectAll("button")
-					   .data(tabdata)
-                       .enter().append("button").on('click', changeTab)
-                       .text(function (d) {return d.name})
-                       .attr('class', function(d, i) {
-                           if (i == 0) {
-                               return "active";
-                           }
-                           return "";
-                       });
-    // By default, show SSM canvas
-    stcanvas.show();
-    fcanvas.hide();
-
-    // Step 4: Setup file input
-    var fileInput = document.getElementById('fileInput');
-	fileInput.addEventListener('change', function(e) {
-		var file = fileInput.files[0];
-		var reader = new FileReader();
-		reader.onload = function(e) {
-            var params = JSON.parse(reader.result);
-            //Setup audio buffers
-            audio_obj.audio_widget.src = params.audio;
-            audio_obj.time_interval = params.time_interval;
-            audio_obj.dim = params.dim;
-            songnameTxt.innerHTML = params.songname;
-            stcanvas.updateParams(params);
-            fcanvas.updateParams(params);
-            refreshDisplays();
-            
-            changeToReady();
-		}
-		reader.readAsText(file);
-    });
-    
-    refreshDisplays = function() {
-        for (i = 0; i < tabdata.length; i++) {
-            if (tabdata[i].active) {
-                requestAnimationFrame(tabdata[i].canvas.repaint.bind(tabdata[i].canvas));
-            }
-        }
-    }
-    audio_obj.audio_widget.addEventListener("play", refreshDisplays);
-    audio_obj.audio_widget.addEventListener("pause", refreshDisplays);
-</script>
+<script src="SongStructureGUIMain.js"></script>
 
 
 </body>

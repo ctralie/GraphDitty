@@ -3,12 +3,12 @@
 /** A canvas for drawing a self-similarity matrix synchronized with audio */
 
 /**
- * Create a structure canvas
+ * Create a self-similarity canvas
  * @param {object} audio_obj - A dictionary of audio parameters, including 
  * 	a handle to the audio widget and a time interval between adjacent rows
  *  of the SSM, and the dimension "dim" of the SSM
  */
-function StructureCanvas(audio_obj) {
+function SimilarityCanvas(audio_obj) {
 	this.ssmcanvas = d3.select("#SimilarityCanvas");
     this.eigcanvas = d3.select("#EigCanvas");
 	this.CSImage = this.ssmcanvas.append('image');
