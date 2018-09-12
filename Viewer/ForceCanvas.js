@@ -60,6 +60,17 @@ function ForceCanvas(audio_obj) {
 	};
 
 	/**
+	 * A function which pans the audio to a time corresponding to
+	 * a double clicked node
+	 * @param {object} d: A handle to the node that's been clicked 
+	 */
+	this.clicknode_panaudio = function(d) {
+		var t = this.audio_obj.time_interval*this.fac*d.id;
+		this.audio_obj.audio_widget.currentTime = t;
+		this.updateCanvas();
+	};
+
+	/**
 	 * Update the graph with information from a new song
 	 * @param {*} params: A dictionary of parameters for a newly loaded song,
 	 * including a graph object with all of the nodes, edges, and weights 
@@ -95,7 +106,7 @@ function ForceCanvas(audio_obj) {
 			.data(graph.nodes)
 			.enter().append("circle")
 			.attr("r", 5)
-			.attr("fill", function(d, i) { 
+			.attr("fill", function(d) { 
 				var c = d.color;
 				return d3.rgb(c[0], c[1], c[2]); 
 			});
@@ -104,6 +115,8 @@ function ForceCanvas(audio_obj) {
 			.on("drag", this.dragged.bind(this))
 			.on("end", this.dragended.bind(this)));
 		
+		this.nodes.on("dblclick", this.clicknode_panaudio.bind(this));
+
 		this.simulation
 			.nodes(graph.nodes)
 			.on("tick", this.ticked.bind(this));
@@ -112,7 +125,7 @@ function ForceCanvas(audio_obj) {
 			.links(graph.links);
 		
 		this.graphcanvas.call(d3.zoom()
-			.scaleExtent([1 / 2, 4])
+			.scaleExtent([1/4, 8])
 			.on("zoom", this.zoomed.bind(this))
 			.filter(function () {
 				return d3.event.ctrlKey;
@@ -146,7 +159,7 @@ function ForceCanvas(audio_obj) {
 			this.nodes.attr("r", 
 				function(d, i) {
 					if (i == idx) {
-						return 20;
+						return 15;
 					}
 					return 5;
 				});
@@ -156,9 +169,9 @@ function ForceCanvas(audio_obj) {
 	/**
 	 * A function that should be called in conjunction with requestionAnimationFrame
 	 * to refresh this canvas.  It continually highlights the node corresponding to
-	 * the the closest position in audio.  Continually generates callbacks as long as the
-	 * audio is playing, but stops generating callbacks when it is paused to save
-	 * computation
+	 * the the closest position in audio, and it continually generates callbacks
+	 * as long as the audio is playing, but stops generating callbacks when it is paused
+	 * to save computation
 	 */
 	this.repaint = function() {
 		this.updateCanvas();

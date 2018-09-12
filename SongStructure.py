@@ -73,21 +73,21 @@ def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, reg
     (w, v, L) = getLaplacianEigsDense(WFused, neigs)
     v = v[:, 1::]
     if plot_result:
-        plt.figure(figsize=(14, 6))
+        plt.figure(figsize=(12, 10))
         WShow = np.array(WFused)
         np.fill_diagonal(WShow, 0)
-        plt.subplot(121)
-        plt.imshow(np.log(5e-2+WShow), interpolation = 'none', cmap = 'afmhot', \
+        plt.subplot2grid((1, 8), (0, 0), colspan=7)
+        plt.imshow(np.log(5e-2+WShow), interpolation = 'nearest', cmap = 'afmhot', \
         extent = (PlotExtents[0], PlotExtents[1], PlotExtents[1], PlotExtents[0]))
-        plt.title(filename)
+        plt.title("Similarity Matrix")
         plt.xlabel("Time (sec)")
         plt.ylabel("Time (sec)")
-        plt.subplot(122)
-        plt.imshow(v, cmap='afmhot', interpolation = 'none', aspect='auto', \
+        plt.subplot2grid((1, 8), (0, 7))
+        plt.imshow(v, cmap='afmhot', interpolation = 'nearest', aspect='auto', \
             extent=(0, v.shape[1], PlotExtents[1], PlotExtents[0]))
         plt.title("Laplacian")
-        plt.ylabel("Time (sec)")
         plt.xlabel("Eigenvector Num")
+        plt.xticks(0.5 + np.arange(v.shape[1]), ["%i"%(i+1) for i in range(v.shape[1])])
         plt.show()
     return {'Ws':Ws, 'WFused':WFused, 'v':v, 'time_interval':time_interval,\
             'BlockLen':time_interval*wins_per_block, 'FeatureNames':FeatureNames}

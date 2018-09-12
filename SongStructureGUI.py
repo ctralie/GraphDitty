@@ -84,7 +84,7 @@ def get_graph_obj(W, K, res = 400):
     fac = 1
     if res > -1:
         fac = int(np.round(W.shape[0]/float(res)))
-        res = W.shape[0]/fac
+        res = int(W.shape[0]/fac)
         WRes = imresize(W, (res, res))
     else:
         res = W.shape[0]
@@ -103,9 +103,6 @@ def get_graph_obj(W, K, res = 400):
     S = getS(WRes, K).tocoo()
     I, J, V = S.row, S.col, S.data
     V *= 10
-    #eps = 1e-5
-    #V[V < eps] = eps
-    #V = np.log(V/eps)
     ret = {}
     ret["nodes"] = [{"id":"%i"%i, "color":colors[i]} for i in range(res)]
     ret["links"] = [{"source":"%i"%I[i], "target":"%i"%J[i], "value":"%.3g"%V[i]} for i in range(I.shape[0])]

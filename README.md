@@ -1,14 +1,16 @@
 # GraphDitty
 
-![Example Adjacency Matrix on Michael Jacksons's Bad](MJBad.png "Example Adjacency Matrix on Michael Jacksons's Bad")
-
 The purpose of this code is to compute clean weighted adjacency matrices for audio files using similarity network fusion, which can be used to do clean structure analysis.  This is based on ideas from the following [paper]:
 
 
 Christopher J Tralie. ``MFCC and HPCP fusion for robust cover song identification.'' In 18th International Society for Music Information Retrieval (ISMIR), 2017.
 
+### Example Adjacency Matrix on Michael Jacksons's Bad
+<img src = "Paper/Figures/SimilarityMatrix_Laplacian.svg" alt = "Example Adjacency Matrix on Michael Jacksons's Bad">
+
+
 ## Dependencies
-* Numpy/Matplotlib
+* numpy/scipy/matplotlib
 * [librosa]
 
 ## Running
