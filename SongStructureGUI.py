@@ -102,6 +102,7 @@ def get_graph_obj(W, K, res = 400):
     print("res = %i, K = %i"%(res, K))
     S = getS(WRes, K).tocoo()
     I, J, V = S.row, S.col, S.data
+    V *= 10
     #eps = 1e-5
     #V[V < eps] = eps
     #V = np.log(V/eps)

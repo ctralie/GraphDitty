@@ -37,6 +37,23 @@ function ForceCanvas(audio_obj) {
 		d.fy = null;
 	};
 
+	this.ticked = function() {
+		this.links
+			.attr("x1", function(d) { return d.source.x; })
+			.attr("y1", function(d) { return d.source.y; })
+			.attr("x2", function(d) { return d.target.x; })
+			.attr("y2", function(d) { return d.target.y; });
+	
+		this.nodes
+			.attr("cx", function(d) { return d.x; })
+			.attr("cy", function(d) { return d.y; });
+	};
+
+	this.zoomed = function() {
+		this.nodes.attr("transform", d3.event.transform);
+		this.links.attr("transform", d3.event.transform);
+	};
+
 	this.updateParams = function(params) {
 		// With heavy inspiration from https://bl.ocks.org/mbostock/4062045
 		var width = params.dim;
@@ -54,12 +71,13 @@ function ForceCanvas(audio_obj) {
 		this.graphcanvas.selectAll("*").remove();
 		this.graphcanvas.attr('width', params.dim).attr('height', params.dim);
 		
-		var link = this.graphcanvas.append("g")
+		this.links = this.graphcanvas.append("g")
 			.attr("class", "links")
 			.selectAll("line")
 			.data(graph.links)
 			.enter().append("line")
-			.attr("stroke-width", function(d) { return Math.sqrt(d.value); });
+			.attr("stroke-width", function(d) { return Math.sqrt(d.value); })
+			.attr("linkDist", 1);
 		
 		this.nodes = this.graphcanvas.append("g")
 			.attr("class", "nodes")
@@ -70,30 +88,26 @@ function ForceCanvas(audio_obj) {
 			.attr("fill", function(d, i) { 
 				var c = d.color;
 				return d3.rgb(c[0], c[1], c[2]); 
-			})
-			.call(d3.drag()
-				.on("start", this.dragstarted.bind(this))
-				.on("drag", this.dragged.bind(this))
-				.on("end", this.dragended.bind(this)));
+			});
+		this.nodes.call(d3.drag()
+			.on("start", this.dragstarted.bind(this))
+			.on("drag", this.dragged.bind(this))
+			.on("end", this.dragended.bind(this)));
 		
 		this.simulation
 			.nodes(graph.nodes)
-			.on("tick", ticked.bind(this));
+			.on("tick", this.ticked.bind(this));
 		
 		this.simulation.force("link")
 			.links(graph.links);
 		
-		function ticked() {
-			link
-				.attr("x1", function(d) { return d.source.x; })
-				.attr("y1", function(d) { return d.source.y; })
-				.attr("x2", function(d) { return d.target.x; })
-				.attr("y2", function(d) { return d.target.y; });
-		
-			this.nodes
-				.attr("cx", function(d) { return d.x; })
-				.attr("cy", function(d) { return d.y; });
-		}
+		this.graphcanvas.call(d3.zoom()
+			.scaleExtent([1 / 2, 4])
+			.on("zoom", this.zoomed.bind(this))
+			.filter(function () {
+				return d3.event.ctrlKey;
+			}));
+
 	};
 
 	/**
@@ -119,7 +133,6 @@ function ForceCanvas(audio_obj) {
 		if (this.audio_obj.time_interval > 0) {
 			var idx = this.audio_obj.audio_widget.currentTime / this.audio_obj.time_interval;
 			idx = Math.round(idx/this.fac);
-			console.log(idx);
 			this.nodes.attr("r", 
 				function(d, i) {
 					if (i == idx) {

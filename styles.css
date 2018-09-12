@@ -1,0 +1,78 @@
+body {
+    background-color: #202020;
+    color:#CCCCCC;
+}
+
+/** For de-facto tabs, as per https://www.w3schools.com/howto/howto_js_tabs.asp */
+.tabmenu {
+    overflow: hidden;
+    border: 1px solid #ccc;
+    background-color: #202020;
+}
+
+/* Style the buttons that are used to open the tab content */
+.tabmenu button {
+    background-color: inherit;
+    float: left;
+    border: none;
+    outline: none;
+    cursor: pointer;
+    padding: 14px 16px;
+    transition: 0.3s;
+    color:#CCCCCC;
+}
+
+/* Change background color of buttons on hover */
+.tabmenu button:hover {
+    background-color: #ddd;
+    color:#333333;
+}
+
+/* Create an active/current tabmenu class */
+.tabmenu button.active {
+    background-color: #aaa;
+    color:#333333;
+}
+
+
+
+
+/* For styling force-directed graph */
+.links line {
+    stroke: #999;
+    stroke-opacity: 0.6;
+  }
+  
+.nodes circle {
+    stroke: #fff;
+    stroke-width: 1.5px;
+}
+
+
+/* Tooltip container */
+/* http://www.w3schools.com/css/css_tooltip.asp */
+.tooltip {
+    position: relative;
+    display: inline-block;
+    border-bottom: 1px dotted black; /* If you want dots under the hoverable text */
+}
+
+/* Tooltip text */
+.tooltip .tooltiptext {
+    visibility: hidden;
+    width: 400px;
+    background-color: black;
+    color: #fff;
+    text-align: left;
+    padding: 10px;
+    border-radius: 6px;
+
+    /* Position the tooltip text - see examples below! */
+    position: absolute;
+    z-index: 1;
+}
+
+/* Show the tooltip text when you mouse over the tooltip container */
+.tooltip:hover .tooltiptext {
+    visibility: visible;
+}
