@@ -16,7 +16,7 @@ To see all options, run the script as follows
 ~~~~~ bash
 python SongStructure.py --help
 ~~~~~
-There are options to view each iteration of the fusion.  By default, the results are saved to a .mat file called ``out.mat'' and to a file "out.json" (you can changes this via command line options).  You can open the .json file in the web page "SongStructureGUI.html" to interactively view the similarity matrix and Laplacian eigenvectors.
+There are options to view each iteration of the fusion.  By default, the results are saved to a .mat file called ``out.mat'' and to a file "out.json" (you can changes this via command line options).  You can open the .json file in the web page "Viewer/index.html" to interactively view the similarity matrix and Laplacian eigenvectors.
 
 
 [Chris Tralie]: <http://www.ctralie.com>
