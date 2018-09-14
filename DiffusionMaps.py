@@ -7,11 +7,11 @@ from scipy import sparse
 import time
 from CSMSSMTools import *
 
-def getDiffusionMap(SSM, Kappa, t = -1, includeDiag = True, thresh = 5e-4, NEigs = 51):
+def getDiffusionMap(K, t = -1, includeDiag = True, thresh = 5e-4, NEigs = 51):
     """
+    Perform diffusion maps on a similarity matrix
+    :param K: A similarity matrix
     :param SSM: Metric between all pairs of points
-    :param Kappa: Number in (0, 1) indicating a fraction of nearest neighbors
-                used to autotune neighborhood size
     :param t: Diffusion parameter.  If -1, do Autotuning
     :param includeDiag: If true, include recurrence to diagonal in the markov
         chain.  If false, zero out diagonal
@@ -19,9 +19,9 @@ def getDiffusionMap(SSM, Kappa, t = -1, includeDiag = True, thresh = 5e-4, NEigs
         the sparse approximation
     :param NEigs: The number of eigenvectors to use in the approximation
     """
-    N = SSM.shape[0]
+    N = K.shape[0]
     #Use the letters from the delaPorte paper
-    K = getW(SSM, int(Kappa*N))
+    K = np.array(K)
     if not includeDiag:
         np.fill_diagonal(K, np.zeros(N))
     RowSumSqrt = np.sqrt(np.sum(K, 1))
@@ -64,8 +64,7 @@ def getTorusKnot(N, p, q):
     X[:, 2] = -np.sin(q*t)
     return X
 
-if __name__ == '__main__':
-    zeroReturn = True
+def testDiffusionMaps():
     N = 400
     X = getPinchedCircle(N)
     sio.savemat("X.mat", {"X":X})
@@ -82,7 +81,7 @@ if __name__ == '__main__':
     ax = plt.gca()
     ax.set_xticks([])
     ax.set_yticks([])
-    ax.set_axis_bgcolor((0.15, 0.15, 0.15))
+    ax.set_facecolor((0.15, 0.15, 0.15))
     plt.title("Original Pinched Circle")
     plt.subplot(122)
     plt.imshow(SSMOrig, interpolation = 'nearest', cmap = 'afmhot')
@@ -92,7 +91,8 @@ if __name__ == '__main__':
     ts = [100]
     for t in ts:
         plt.clf()
-        M = getDiffusionMap(SSMOrig, Kappa, t)
+        W = getW(SSMOrig, int(Kappa*SSMOrig.shape[0]))
+        M = getDiffusionMap(W, t)
         SSM = getSSM(M)
         plt.subplot(121)
         X = M[:, [-2, -3]]
@@ -104,8 +104,11 @@ if __name__ == '__main__':
         ax = plt.gca()
         ax.set_xticks([])
         ax.set_yticks([])
-        ax.set_axis_bgcolor((0.15, 0.15, 0.15))
+        ax.set_facecolor((0.15, 0.15, 0.15))
         plt.subplot(122)
         plt.imshow(SSM, interpolation = 'nearest', cmap = 'afmhot')
         plt.title("Diffusion Distance")
         plt.savefig("Diffusion%i.svg"%t, bbox_inches = 'tight')
+
+if __name__ == '__main__':
+    testDiffusionMaps()

@@ -1,561 +1,517 @@
-var gl;
-var glcanvas;
-
-function initGL(canvas) {
-    try {
-        gl = canvas.getContext("experimental-webgl");
-        gl.viewportWidth = canvas.width;
-        gl.viewportHeight = canvas.height;
-    } catch (e) {
-    }
-    if (!gl) {
-        alert("Could not initialise WebGL, sorry :-(.  Try a new version of chrome or firefox and make sure your newest graphics drivers are installed");
-    }
-}
-
-
-//Type 0: Fragment shader, Type 1: Vertex Shader
-function getShader(gl, str, type) {
-    var xmlhhtp;
-    var shader;
-    if (type == 0) {
-        shader = gl.createShader(gl.FRAGMENT_SHADER);
-    } else if (type == 1) {
-        shader = gl.createShader(gl.VERTEX_SHADER);
-    } else {
-        return null;
-    }
-
-    gl.shaderSource(shader, str);
-    gl.compileShader(shader);
-
-    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-        alert(gl.getShaderInfoLog(shader));
-        return null;
-    }
-
-    return shader;
-}
-
-
-var shaderProgram;
-var shaderProgram2;
-
-function initShaders() {
-    var str = "precision mediump float;\n";
-    str = str + "varying vec4 fColor;\n";
-    str = str + "void main(void) {\n";
-    str = str + "gl_FragColor = fColor;\n";
-    str = str + "}\n\n";
-    var fragmentShader = getShader(gl, str, 0);
-    var fragmentShader2 = getShader(gl, str, 0);
-
-    var strFirst = "attribute vec3 vPos;\n";
-    strFirst = strFirst + "attribute vec4 vColor;\n";
-    strFirst = strFirst + "uniform mat4 uMVMatrix;\n";
-    strFirst = strFirst + "uniform mat4 uPMatrix;\n";
-    strFirst = strFirst + "varying vec4 fColor;\n";
-    strFirst = strFirst + "void main(void) {\n";
-
-    var strSecond = "gl_Position = uPMatrix * uMVMatrix * vec4(vPos, 1.0);\n";
-    strSecond = strSecond+ "fColor = vColor;\n";
-    strSecond = strSecond + "}";
-    var vertexShader = getShader(gl, strFirst + "gl_PointSize = 3.0;\n" + strSecond, 1);
-    var vertexShader2 = getShader(gl, strFirst + "gl_PointSize = 15.0;\n" + strSecond, 1);
-
-    shaderProgram = gl.createProgram();
-    gl.attachShader(shaderProgram, vertexShader);
-    gl.attachShader(shaderProgram, fragmentShader);
-    gl.linkProgram(shaderProgram);
-    if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
-        alert("Could not initialise shaders");
-    }
-    gl.useProgram(shaderProgram);
-    shaderProgram.vPosAttrib = gl.getAttribLocation(shaderProgram, "vPos");
-    gl.enableVertexAttribArray(shaderProgram.vPosAttrib);
-    shaderProgram.vColorAttrib = gl.getAttribLocation(shaderProgram, "vColor");
-    gl.enableVertexAttribArray(shaderProgram.vColorAttrib);
-    shaderProgram.pMatrixUniform = gl.getUniformLocation(shaderProgram, "uPMatrix");
-    shaderProgram.mvMatrixUniform = gl.getUniformLocation(shaderProgram, "uMVMatrix");
-
-    shaderProgram2 = gl.createProgram();
-    gl.attachShader(shaderProgram2, vertexShader2);
-    gl.attachShader(shaderProgram2, fragmentShader2);
-    gl.linkProgram(shaderProgram2);
-    if (!gl.getProgramParameter(shaderProgram2, gl.LINK_STATUS)) {
-        alert("Could not initialise shaders");
-    }
-    gl.useProgram(shaderProgram2);
-    shaderProgram2.vPosAttrib = gl.getAttribLocation(shaderProgram2, "vPos");
-    gl.enableVertexAttribArray(shaderProgram2.vPosAttrib);
-    shaderProgram2.vColorAttrib = gl.getAttribLocation(shaderProgram2, "vColor");
-    gl.enableVertexAttribArray(shaderProgram2.vColorAttrib);
-    shaderProgram2.pMatrixUniform = gl.getUniformLocation(shaderProgram2, "uPMatrix");
-    shaderProgram2.mvMatrixUniform = gl.getUniformLocation(shaderProgram2, "uMVMatrix");
-}
-
-
-var mvMatrix = mat4.create();
-var mvMatrixStack = [];
-var pMatrix = mat4.create();
-var offset = vec3.create();
-
-function mvPopMatrix() {
-    if (mvMatrixStack.length == 0) {
-        throw "Invalid popMatrix!";
-    }
-    mvMatrix = mvMatrixStack.pop();
-}
-
-
-function setUniforms(sP) {
-    gl.uniformMatrix4fv(sP.pMatrixUniform, false, pMatrix);
-    gl.uniformMatrix4fv(sP.mvMatrixUniform, false, mvMatrix);
-    //gl.uniform1f(shaderProgram.pointSizeUniform, false, pointSize);
-}
-
-
 function degToRad(degrees) {
     return degrees * Math.PI / 180;
 }
 
-//Mouse variables
-var usingMouse = false;
-var lastX = 0;
-var lastY = 0;
-var dragging = false;
-var MOUSERATE = 0.005;
-var clickType = "LEFT";
-var justClicked = false;
-var translateRotate = true;
 
-getMousePos = function(evt) {
+function getMousePos(evt) {
     return {
         X: evt.clientX,
         Y: evt.clientY
     };
 }
 
-releaseClick = function(evt) {
-    usingMouse = true;
-	evt.preventDefault();
-	dragging = false;
-	requestAnimFrame(repaint);
-	return false;
-}
+function DiffusionGLCanvas(audio_obj) {
+    this.audio_obj = audio_obj;
+    this.glcanvas = document.getElementById("DiffusionGLCanvas");
+    this.gl = 0;
+    
+    // Transformation matrices and camera stuff
+    this.mvMatrix = mat4.create();
+    this.mvMatrixStack = [];
+    this.pMatrix = mat4.create();
+    this.offset = vec3.create();
+    this.camera = new MousePolarCamera(800, 600, 0.75);
+    this.farR = 1.0;
+    this.bbox = [0, 1, 0, 1, 0, 1];
 
-mouseOut = function(evt) {
-    usingMouse = true;
-	dragging = false;
-	requestAnimFrame(repaint);
-	return false;
-}
+    //Mouse variables
+    this.usingMouse = false;
+    this.lastX = 0;
+    this.lastY = 0;
+    this.dragging = false;
+    this.MOUSERATE = 0.005;
+    this.clickType = "LEFT";
+    this.justClicked = false;
+    this.translateRotate = true;
 
-makeClick = function(e) {
-    usingMouse = true;
-    var evt = (e == null ? event:e);
-    clickType = "LEFT";
-	evt.preventDefault();
-	if (evt.which) {
-	    if (evt.which == 3) clickType = "RIGHT";
-	    if (evt.which == 2) clickType = "MIDDLE";
-	}
-	else if (evt.button) {
-	    if (evt.button == 2) clickType = "RIGHT";
-	    if (evt.button == 4) clickType = "MIDDLE";
-	}
-	dragging = true;
-	justClicked = true;
-	var mousePos = getMousePos(evt);
-	lastX = mousePos.X;
-	lastY = mousePos.Y;
-	requestAnimFrame(repaint);
-	return false;
-}
+    //Vertex/color buffers for the entire point cloud
+    this.N = 0; //Number of points
+    this.allVertexVBO = -1;
+    this.allColorVBO = -1;
+    this.times = [];
 
-//http://www.w3schools.com/jsref/dom_obj_event.asp
-clickerDragged = function(evt) {
-    usingMouse = true;
-	evt.preventDefault();
-	var mousePos = getMousePos(evt);
-	var dX = mousePos.X - lastX;
-	var dY = mousePos.Y - lastY;
-	lastX = mousePos.X;
-	lastY = mousePos.Y;
-	if (dragging) {
-	    if (clickType == "MIDDLE") {
-	        camera.translate(dX, -dY);
-	    }
-		else if (clickType == "RIGHT") { //Right click
-			camera.zoom(dY); //Want to zoom in as the mouse goes up
-		}
-		else if (clickType == "LEFT") {
-		    if (evt.ctrlKey) {
-		        camera.translate(dX, -dY);
-		    }
-		    else if (evt.shiftKey) {
-		        camera.zoom(dY);
-		    }
-		    else{
-			    camera.orbitLeftRight(dX);
-			    camera.orbitUpDown(-dY);
-			}
-		}
-	    requestAnimFrame(repaint);
-	}
-	return false;
-}
-
-touchDragStart = function(evt) {
-    if (usingMouse) {
-        return;
-    }
-    lastX = evt.pageX;
-    lastY = evt.pageY;
-}
-
-touchDragged = function(evt) {
-    if (usingMouse) {
-        return;
-    }
-    var dX = evt.pageX - lastX;
-    var dY = evt.pageY - lastY;
-    lastX = evt.pageX;
-    lastY = evt.pageY;
-    if (translateRotate) {
-        camera.translate(dX, -dY);
-    }
-    else {
-        camera.orbitLeftRight(dX);
-        camera.orbitUpDown(-dY);
-    }
-    requestAnimFrame(repaint);
-}
-
-touchGesture = function(evt) {
-    //waitingDisp.innerHTML = "<font color = \"red\">" + evt.toString() + "</font>";
-    lastX = evt.pageX;
-    lastY = evt.pageY;
-    //camera.orbitLeftRight(2*evt.da);
-    camera.zoom(-evt.ds*200);
-    requestAnimFrame(repaint);
-}
-
-touchToggleTap = function(evt) {
-    if (usingMouse) {
-        return;
-    }
-    translateRotate = !translateRotate;
-}
-
-//Playing information
-var playIdx = 0;
-var playTime = 0;
-var startTime = 0;
-var offsetTime = 0;
-var playing = false;
-
-//Delay Series Information
-var DelaySeries = [ [] ];
-
-//Centers Information
-var centers = [];
-var dims = [];
-var edges = [];
-
-//Vertex/color buffers for the entire point cloud
-var allVertexVBO = -1;
-var allColorVBO = -1;
-var edgesVertexVBO = -1;
-var edgesColorVBO = -1;
-var times = [];
-
-//Camera stuff
-var camera = new MousePolarCamera(800, 600, 0.75);
-var farR = 1.0;
-var bbox = [0, 1, 0, 1, 0, 1];
-
-//Animation stuff
-var capturer = null;
-var animFrameNum = 0;
-var NAnimFrames = 30;
-var origCamera = {};
-
-function centerOnBBox() {
-    var dX = bbox[1] - bbox[0];
-    var dY = bbox[3] - bbox[2];
-    var dZ = bbox[5] - bbox[4];
-    farR = Math.sqrt(dX*dX + dY*dY + dZ*dZ);
-    camera.R = farR;
-    camera.center = vec3.fromValues(bbox[0] + 0.5*dX, bbox[2] + 0.5*dY, bbox[4] + 0.5*dZ);
-    camera.phi = Math.PI/2;
-    camera.theta = -Math.PI/2;
-    camera.updateVecsFromPolar();
-}
-
-function initGLBuffers(X) {
-    var N = X.length;
-    if (N <= 0) {
-        return;
-    }
-    DelaySeries = X;
-    playIdx = N-1;
-    playTime = X[X.length-1][3];
-    var i = 0;
-    var k = 0;
-
-    var vertices = [];
-    var colors = [];
-    times = [];
-    var label;
-    var dim;
-
-    for (i = 0; i < N; i++) {
-    	for (k = 0; k < 3; k++) {
-    		vertices.push(X[i][k]);
-    	}
-    	times.push(X[i][3]);
-    	ci = 63.0*(0.1+X[i][3])/(0.1+X[N-1][3]);
-    	li = numeric.floor([ci])[0];
-    	ri = numeric.ceil([ci])[0];
-    	ri = numeric.min([ri], [63])[0];
-    	//Linear interpolation for colormap
-    	colors.push(COLORMAP_JET[li*3]*(ri-ci) + COLORMAP_JET[ri*3]*(ci-li));//Red
-    	colors.push(COLORMAP_JET[li*3+1]*(ri-ci) + COLORMAP_JET[ri*3+1]*(ci-li));//Green
-    	colors.push(COLORMAP_JET[li*3+2]*(ri-ci) + COLORMAP_JET[ri*3+2]*(ci-li));//Blue
-    	colors.push(1);//Alpha
-    }
-
-    //Initialize vertex buffers
-    centerCounts = [];
-    if (allVertexVBO == -1) {
-        allVertexVBO = gl.createBuffer();
-    }
-    gl.bindBuffer(gl.ARRAY_BUFFER, allVertexVBO);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
-    allVertexVBO.itemSize = 3;
-    allVertexVBO.numItems = N;
+    //Animation stuff
+    this.capturer = null;
+    this.animFrameNum = 0;
+    this.NAnimFrames = 30;
+    this.origCamera = {};
 
 
-    //Initialize color buffers
-    if (allColorVBO == -1) {
-        allColorVBO = gl.createBuffer();
-    }
-    gl.bindBuffer(gl.ARRAY_BUFFER, allColorVBO);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
-    allColorVBO.itemSize = 4;
-    allColorVBO.numItems = N;
 
-    //Initialize edge buffers
-    if (edgesVertexVBO == -1) {
-        edgesVertexVBO = gl.createBuffer();
-    }
-    if (edgesColorVBO == -1) {
-        edgesColorVBO = gl.createBuffer();
-    }
-    var edgesV = [];
-    var edgesC = [];
-    var eNum;
-    for (i = 0; i < edges.length; i++) {
-        for (eNum = 0; eNum < 2; eNum++) {
-            for (k = 0; k < 3; k++) {
-                edgesV.push(DelaySeries[centers[edges[i][eNum]]][k]);
-                edgesC.push(0.8);
+    /*******************************************************/
+    /*                 CAMERA FUNCTIONS                    */
+    /*******************************************************/
+    this.mvPopMatrix = function() {
+        if (this.mvMatrixStack.length == 0) {
+            throw "Invalid popMatrix!";
+        }
+        this.mvMatrix = this.mvMatrixStack.pop();
+    };
+    
+    
+    this.setUniforms = function(sP) {
+        this.gl.uniformMatrix4fv(sP.pMatrixUniform, false, this.pMatrix);
+        this.gl.uniformMatrix4fv(sP.mvMatrixUniform, false, this.mvMatrix);
+        //this.gl.uniform1f(this.shaderProgram.pointSizeUniform, false, pointSize);
+    };
+
+
+    this.centerOnBBox = function() {
+        var dX = this.bbox[1] - this.bbox[0];
+        var dY = this.bbox[3] - this.bbox[2];
+        var dZ = this.bbox[5] - this.bbox[4];
+        this.farR = Math.sqrt(dX*dX + dY*dY + dZ*dZ);
+        this.camera.R = this.farR;
+        this.camera.center = vec3.fromValues(this.bbox[0] + 0.5*dX, this.bbox[2] + 0.5*dY, this.bbox[4] + 0.5*dZ);
+        this.camera.phi = Math.PI/2;
+        this.camera.theta = -Math.PI/2;
+        this.camera.updateVecsFromPolar();
+    };
+    
+
+
+
+
+
+
+    /*******************************************************/
+    /*                  MOUSE FUNCTIONS                    */
+    /*******************************************************/
+
+    this.releaseClick = function(evt) {
+        this.usingMouse = true;
+        evt.preventDefault();
+        this.dragging = false;
+        requestAnimationFrame(this.repaint.bind(this));
+        return false;
+    };
+    
+    this.mouseOut = function(evt) {
+        this.usingMouse = true;
+        this.dragging = false;
+        requestAnimationFrame(this.repaint.bind(this));
+        return false;
+    };
+    
+    this.makeClick = function(e) {
+        this.usingMouse = true;
+        var evt = (e == null ? event:e);
+        this.clickType = "LEFT";
+        evt.preventDefault();
+        if (evt.which) {
+            if (evt.which == 3) this.clickType = "RIGHT";
+            if (evt.which == 2) this.clickType = "MIDDLE";
+        }
+        else if (evt.button) {
+            if (evt.button == 2) this.clickType = "RIGHT";
+            if (evt.button == 4) this.clickType = "MIDDLE";
+        }
+        this.dragging = true;
+        this.justClicked = true;
+        var mousePos = getMousePos(evt);
+        this.lastX = mousePos.X;
+        this.lastY = mousePos.Y;
+        requestAnimationFrame(this.repaint.bind(this));
+        return false;
+    };
+    
+    //http://www.w3schools.com/jsref/dom_obj_event.asp
+    this.clickerDragged = function(evt) {
+        this.usingMouse = true;
+        evt.preventDefault();
+        var mousePos = getMousePos(evt);
+        var dX = mousePos.X - this.lastX;
+        var dY = mousePos.Y - this.lastY;
+        this.lastX = mousePos.X;
+        this.lastY = mousePos.Y;
+        if (this.dragging) {
+            if (this.clickType == "MIDDLE") {
+                this.camera.translate(dX, -dY);
             }
-            edgesC.push(1);
+            else if (this.clickType == "RIGHT") { //Right click
+                this.camera.zoom(dY); //Want to zoom in as the mouse goes up
+            }
+            else if (this.clickType == "LEFT") {
+                if (evt.ctrlKey) {
+                    this.camera.translate(dX, -dY);
+                }
+                else if (evt.shiftKey) {
+                    this.camera.zoom(dY);
+                }
+                else{
+                    this.camera.orbitLeftRight(dX);
+                    this.camera.orbitUpDown(-dY);
+                }
+            }
+            requestAnimationFrame(this.repaint.bind(this));
+        }
+        return false;
+    };
+    
+    this.touchDragStart = function(evt) {
+        if (this.usingMouse) {
+            return;
+        }
+        this.lastX = evt.pageX;
+        this.lastY = evt.pageY;
+    };
+    
+    this.touchDragged = function(evt) {
+        if (this.usingMouse) {
+            return;
+        }
+        var dX = evt.pageX - lastX;
+        var dY = evt.pageY - lastY;
+        this.lastX = evt.pageX;
+        this.lastY = evt.pageY;
+        if (this.translateRotate) {
+            this.camera.translate(dX, -dY);
+        }
+        else {
+            this.camera.orbitLeftRight(dX);
+            this.camera.orbitUpDown(-dY);
+        }
+        requestAnimationFrame(this.repaint.bind(this));
+    };
+    
+    this.touchGesture = function(evt) {
+        this.lastX = evt.pageX;
+        this.lastY = evt.pageY;
+        //camera.orbitLeftRight(2*evt.da);
+        this.camera.zoom(-evt.ds*200);
+        requestAnimationFrame(this.repaint.bind(this));
+    };
+    
+    this.touchToggleTap = function(evt) {
+        if (this.usingMouse) {
+            return;
+        }
+        this.translateRotate = !this.translateRotate;
+    };
+
+    this.initInteractionHandlers = function() {
+        this.glcanvas.addEventListener("contextmenu", function(e){ e.stopPropagation(); e.preventDefault(); return false; }); //Need this to disable the menu that pops up on right clicking
+        
+        this.glcanvas.addEventListener('mousedown', this.makeClick.bind(this));
+        this.glcanvas.addEventListener('mouseup', this.releaseClick.bind(this));
+        this.glcanvas.addEventListener('mousemove', this.clickerDragged.bind(this));
+        this.glcanvas.addEventListener('mouseout', this.mouseOut.bind(this));
+
+        this.glcanvas.addEventListener('pointerdown', this.makeClick.bind(this));
+        this.glcanvas.addEventListener('pointerup', this.releaseClick.bind(this));
+        this.glcanvas.addEventListener('pointermove', this.clickerDragged.bind(this));
+        this.glcanvas.addEventListener('pointerout', this.mouseOut.bind(this));
+    };
+
+
+
+
+
+
+    /*******************************************************/
+    /*      WEBGL INITIALIZATION / SHADER FUNCTIONS        */
+    /*******************************************************/
+
+
+    this.initGL = function() {
+        try {
+            this.gl = this.glcanvas.getContext("experimental-webgl");
+            this.gl.viewportWidth = this.glcanvas.width;
+            this.gl.viewportHeight = this.glcanvas.height;
+        } catch (e) {
+        }
+        if (!this.gl) {
+            alert("Could not initialise WebGL, sorry :-(.  Try a new version of chrome or firefox and make sure your newest graphics drivers are installed");
+            return;
+        }
+        this.gl.clearColor(0, 0, 0, 1.0);
+        this.gl.enable(this.gl.DEPTH_TEST);
+    };
+
+    
+    /** Helper function for compiling shaders from strings
+     * @param {string} str: The glsl code as a string
+     * @param {int} type: 0 if this is a fragment shader, 1 if it's a vertex shader
+     */
+    this.getShader = function(str, type) {
+        var xmlhhtp;
+        var shader;
+        if (type == 0) {
+            shader = this.gl.createShader(this.gl.FRAGMENT_SHADER);
+        } else if (type == 1) {
+            shader = this.gl.createShader(this.gl.VERTEX_SHADER);
+        } else {
+            return null;
+        }
+
+        this.gl.shaderSource(shader, str);
+        this.gl.compileShader(shader);
+
+        if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS)) {
+            alert(this.gl.getShaderInfoLog(shader));
+            return null;
+        }
+
+        return shader;
+    }
+
+    
+    /**
+     * Setup the shaders for drawing the colored curves
+     * Create two different shaders whose only difference is the point size
+     * (TODO: There's a better way to do this with uniforms)
+     */
+    this.initShaders = function() {
+        var str = "precision mediump float;\n";
+        str = str + "varying vec4 fColor;\n";
+        str = str + "void main(void) {\n";
+        str = str + "gl_FragColor = fColor;\n";
+        str = str + "}\n\n";
+        var fragmentShader = this.getShader(str, 0);
+        var fragmentShader2 = this.getShader(str, 0);
+    
+        var strFirst = "attribute vec3 vPos;\n";
+        strFirst = strFirst + "attribute vec4 vColor;\n";
+        strFirst = strFirst + "uniform mat4 uMVMatrix;\n";
+        strFirst = strFirst + "uniform mat4 uPMatrix;\n";
+        strFirst = strFirst + "varying vec4 fColor;\n";
+        strFirst = strFirst + "void main(void) {\n";
+    
+        var strSecond = "gl_Position = uPMatrix * uMVMatrix * vec4(vPos, 1.0);\n";
+        strSecond = strSecond+ "fColor = vColor;\n";
+        strSecond = strSecond + "}";
+        var vertexShader = this.getShader(strFirst + "gl_PointSize = 3.0;\n" + strSecond, 1);
+        var vertexShader2 = this.getShader(strFirst + "gl_PointSize = 15.0;\n" + strSecond, 1);
+    
+        this.shaderProgram = this.gl.createProgram();
+        this.gl.attachShader(this.shaderProgram, vertexShader);
+        this.gl.attachShader(this.shaderProgram, fragmentShader);
+        this.gl.linkProgram(this.shaderProgram);
+        if (!this.gl.getProgramParameter(this.shaderProgram, this.gl.LINK_STATUS)) {
+            alert("Could not initialise shaders");
+        }
+        this.gl.useProgram(this.shaderProgram);
+        this.shaderProgram.vPosAttrib = this.gl.getAttribLocation(this.shaderProgram, "vPos");
+        this.gl.enableVertexAttribArray(this.shaderProgram.vPosAttrib);
+        this.shaderProgram.vColorAttrib = this.gl.getAttribLocation(this.shaderProgram, "vColor");
+        this.gl.enableVertexAttribArray(this.shaderProgram.vColorAttrib);
+        this.shaderProgram.pMatrixUniform = this.gl.getUniformLocation(this.shaderProgram, "uPMatrix");
+        this.shaderProgram.mvMatrixUniform = this.gl.getUniformLocation(this.shaderProgram, "uMVMatrix");
+    
+        this.shaderProgram2 = this.gl.createProgram();
+        this.gl.attachShader(this.shaderProgram2, vertexShader2);
+        this.gl.attachShader(this.shaderProgram2, fragmentShader2);
+        this.gl.linkProgram(this.shaderProgram2);
+        if (!this.gl.getProgramParameter(this.shaderProgram2, this.gl.LINK_STATUS)) {
+            alert("Could not initialise shaders");
+        }
+        this.gl.useProgram(this.shaderProgram2);
+        this.shaderProgram2.vPosAttrib = this.gl.getAttribLocation(this.shaderProgram2, "vPos");
+        this.gl.enableVertexAttribArray(this.shaderProgram2.vPosAttrib);
+        this.shaderProgram2.vColorAttrib = this.gl.getAttribLocation(this.shaderProgram2, "vColor");
+        this.gl.enableVertexAttribArray(this.shaderProgram2.vColorAttrib);
+        this.shaderProgram2.pMatrixUniform = this.gl.getUniformLocation(this.shaderProgram2, "uPMatrix");
+        this.shaderProgram2.mvMatrixUniform = this.gl.getUniformLocation(this.shaderProgram2, "uMVMatrix");
+    };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    /*******************************************************/
+    /*           RENDERING/UPDATING FUNCTIONS              */
+    /*******************************************************/
+
+    this.updateParams = function(params) {
+        if (!this.gl) {
+            alert("Error: GL not properly initialized, so cannot display new song");
+            return;
+        }
+        this.N = params.X.length/3;
+        if (this.N <= 0) {
+            return;
+        }
+        var i = 0;
+        
+        //Initialize vertex buffers
+        if (this.allVertexVBO == -1) {
+            this.allVertexVBO = this.gl.createBuffer();
+        }
+        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.allVertexVBO);
+        this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(this.X), this.gl.STATIC_DRAW);
+        this.allVertexVBO.itemSize = 3;
+        this.allVertexVBO.numItems = this.N;
+    
+        //Initialize color buffers
+        if (this.allColorVBO == -1) {
+            this.allColorVBO = this.gl.createBuffer();
+        }
+        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.allColorVBO);
+        this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(this.colors), this.gl.STATIC_DRAW);
+        this.allColorVBO.itemSize = 4; //Including alpha
+        this.allColorVBO.numItems = this.N;
+    
+        //Now determine the bounding box of the curve and use
+        //that to update the camera info
+        bbox = [params.X[0], params.X[0], params.X[1], params.X[1], params.X[2], params.X[2]];
+        for (i = 0; i < this.N; i++) {
+            if (params.X[i*3] < bbox[0]) {
+                bbox[0] = params.X[i*3];
+            }
+            if (params.X[i*3] > bbox[1]) {
+                bbox[1] = params.X[i*3];
+            }
+            if (params.X[i*3+1] < bbox[2]) {
+                bbox[2] = params.X[i*3+1];
+            }
+            if (params.X[i*3+1] > bbox[3]) {
+                bbox[3] = params.X[i*3+1];
+            }
+            if (params.X[i*3+2] < bbox[4]) {
+                bbox[4] = params.X[i*3+2];
+            }
+            if (params.X[i*3+2] > bbox[5]) {
+                bbox[5] = params.X[i*3+2];
+            }
+        }
+        this.centerOnBBox();
+        requestAnimationFrame(this.repaint.bind(this));
+    };
+    
+
+	/**
+	 * A function which toggles all of the visible elements to show
+	 */
+	this.show = function() {
+		this.glcanvas.style.display = "block";
+	};
+
+	/**
+	 * A function which toggles all of the visible elements to hide
+	 */
+	this.hide = function() {
+		this.glcanvas.style.display = "none";
+	};
+
+    
+    this.drawScene = function(making_GIF) {
+        this.gl.viewport(0, 0, this.gl.viewportWidth, this.gl.viewportHeight);
+        this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
+    
+        mat4.perspective(this.pMatrix, 45, this.gl.viewportWidth / this.gl.viewportHeight, this.camera.R/100.0, Math.max(this.farR*2, this.camera.R*2));
+        this.mvMatrix = this.camera.getMVMatrix();
+        
+        /** If we're making the GIF, show the whole thing.  If not, we should
+         * figure out what index we're at in the song
+         */
+        var playIdx = this.N;
+        if (!making_GIF) {
+            var playIdx = this.audio_obj.audio_widget.currentTime / this.audio_obj.time_interval;
+            playIdx = Math.round(playIdx);
+        }
+
+        if (this.allVertexVBO != -1 && this.allColorVBO != -1) {
+            this.gl.useProgram(this.shaderProgram);
+            this.setUniforms(this.shaderProgram);
+            //Step 1: Draw all points unsaturated
+            this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.allVertexVBO);
+            this.gl.vertexAttribPointer(this.shaderProgram.vPosAttrib, this.allVertexVBO.itemSize, this.gl.FLOAT, false, 0, 0);
+    
+            this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.allColorVBO);
+            this.gl.vertexAttribPointer(this.shaderProgram.vColorAttrib, this.allColorVBO.itemSize, this.gl.FLOAT, false, 0, 0);
+            this.gl.drawArrays(this.gl.POINTS, 0, playIdx);
+            //Draw "time edge" lines between points
+            this.gl.drawArrays(this.gl.LINES, 0, playIdx+1);
+            this.gl.drawArrays(this.gl.LINES, 1, playIdx);
+    
+            if (!making_GIF) {
+                //Step 2: Draw the current point as a larger point
+                this.gl.useProgram(this.shaderProgram2);
+                this.setUniforms(this.shaderProgram2);
+                this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.allVertexVBO);
+                this.gl.vertexAttribPointer(this.shaderProgram2.vPosAttrib, this.allVertexVBO.itemSize, this.gl.FLOAT, false, 0, 0);
+                this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.allColorVBO);
+                this.gl.vertexAttribPointer(this.shaderProgram2.vColorAttrib, this.allColorVBO.itemSize, this.gl.FLOAT, false, 0, 0);
+                this.gl.drawArrays(this.gl.POINTS, playIdx, 1);
+            }
+        }
+    };
+    
+    
+    this.repaint = function() {
+        this.drawScene(false);
+		if (!this.audio_obj.audio_widget.paused) {
+			requestAnimationFrame(this.repaint.bind(this));
+		}
+    };
+
+    /*
+    function repaintAnimation() {
+        if (animFrameNum < NAnimFrames) {
+            camera.theta = 2*Math.PI*animFrameNum/NAnimFrames;
+            camera.updateVecsFromPolar();
+            drawSceneAnim();
+            capturer.addFrame(glcanvas, {copy:true, delay:100});
+            animFrameNum++;
+            requestAnimationFrame(repaintAnimation);
+        }
+        else {
+            loadString = "Making GIF";
+            capturer.render();
+    
+            //Restore original camera parameters and repaint
+            camera.theta = origCamera.theta;
+            camera.phi = origCamera.phi;
+            camera.R = origCamera.R;
+            camera.center = origCamera.center;
+            camera.updateVecsFromPolar();
+            requestAnimationFrame(drawScene);
         }
     }
-    gl.bindBuffer(gl.ARRAY_BUFFER, edgesVertexVBO);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(edgesV), gl.STATIC_DRAW);
-    edgesVertexVBO.itemSize = 3;
-    edgesVertexVBO.numItems = edges.length*2;
-    gl.bindBuffer(gl.ARRAY_BUFFER, edgesColorVBO);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(edgesC), gl.STATIC_DRAW);
-    edgesColorVBO.itemSize = 4;
-    edgesColorVBO.numItems = edges.length*2;
-
-    //Now determine the bounding box of the curve and use
-    //that to update the camera info
-    bbox = [vertices[0], vertices[0], vertices[1], vertices[1], vertices[2], vertices[2]];
-    for (i = 0; i < N; i++) {
-        if (vertices[i*3] < bbox[0]) {
-            bbox[0] = vertices[i*3];
-        }
-        if (vertices[i*3] > bbox[1]) {
-            bbox[1] = vertices[i*3];
-        }
-        if (vertices[i*3+1] < bbox[2]) {
-            bbox[2] = vertices[i*3+1];
-        }
-        if (vertices[i*3+1] > bbox[3]) {
-            bbox[3] = vertices[i*3+1];
-        }
-        if (vertices[i*3+2] < bbox[4]) {
-            bbox[4] = vertices[i*3+2];
-        }
-        if (vertices[i*3+2] > bbox[5]) {
-            bbox[5] = vertices[i*3+2];
-        }
-    }
-    centerOnBBox();
-    requestAnimFrame(repaint);
-}
-
-
-function drawScene() {
-    gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-    mat4.perspective(pMatrix, 45, gl.viewportWidth / gl.viewportHeight, camera.R/100.0, Math.max(farR*2, camera.R*2));
-    mvMatrix = camera.getMVMatrix();
-
-    if (allVertexVBO != -1 && allColorVBO != -1) {
-        while (DelaySeries[playIdx][3] < playTime && playIdx < DelaySeries.length - 1) {
-            playIdx++;
-        }
-        gl.useProgram(shaderProgram);
-        setUniforms(shaderProgram);
-        //Step 1: Draw all points unsaturated
-        gl.bindBuffer(gl.ARRAY_BUFFER, allVertexVBO);
-        gl.vertexAttribPointer(shaderProgram.vPosAttrib, allVertexVBO.itemSize, gl.FLOAT, false, 0, 0);
-
-        gl.bindBuffer(gl.ARRAY_BUFFER, allColorVBO);
-        gl.vertexAttribPointer(shaderProgram.vColorAttrib, allColorVBO.itemSize, gl.FLOAT, false, 0, 0);
-        gl.drawArrays(gl.POINTS, 0, playIdx);
-        //Draw Lines between points if the user so chooses
-        if (MusicParams.displayTimeEdges) {
-            gl.drawArrays(gl.LINES, 0, playIdx+1);
-            gl.drawArrays(gl.LINES, 1, playIdx);
-        }
-
-
-        //Step 2: Draw the current point as a larger point
-        gl.useProgram(shaderProgram2);
-        setUniforms(shaderProgram2);
-        gl.bindBuffer(gl.ARRAY_BUFFER, allVertexVBO);
-        gl.vertexAttribPointer(shaderProgram2.vPosAttrib, allVertexVBO.itemSize, gl.FLOAT, false, 0, 0);
-        gl.bindBuffer(gl.ARRAY_BUFFER, allColorVBO);
-        gl.vertexAttribPointer(shaderProgram2.vColorAttrib, allColorVBO.itemSize, gl.FLOAT, false, 0, 0);
-        gl.drawArrays(gl.POINTS, playIdx, 1);
-    }
-}
-
-function drawSceneAnim() {
-    gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-    mat4.perspective(pMatrix, 45, gl.viewportWidth / gl.viewportHeight, camera.R/100.0, Math.max(farR*2, camera.R*2));
-    mvMatrix = camera.getMVMatrix();
-
-    if (allVertexVBO != -1 && allColorVBO != -1) {
-        gl.useProgram(shaderProgram);
-        setUniforms(shaderProgram);
-        //Step 1: Draw all points unsaturated
-        gl.bindBuffer(gl.ARRAY_BUFFER, allVertexVBO);
-        gl.vertexAttribPointer(shaderProgram.vPosAttrib, allVertexVBO.itemSize, gl.FLOAT, false, 0, 0);
-
-        gl.bindBuffer(gl.ARRAY_BUFFER, allColorVBO);
-        gl.vertexAttribPointer(shaderProgram.vColorAttrib, allColorVBO.itemSize, gl.FLOAT, false, 0, 0);
-        gl.drawArrays(gl.POINTS, 0, DelaySeries.length);
-        //Draw Lines between points if the user so chooses
-        if (MusicParams.displayTimeEdges) {
-            gl.drawArrays(gl.LINES, 0, DelaySeries.length-2);
-            gl.drawArrays(gl.LINES, 1, DelaySeries.length-1);
-        }
-    }
-}
-
-
-function repaint() {
-    drawScene();
-}
-
-function repaintWithContext(context) {
-    if (playing) {
-        playTime = context.currentTime - startTime + offsetTime;
-        var timeSlider = document.getElementById('timeSlider');
-        timeSlider.value = "" + parseInt(""+Math.round(playTime*1000.0/buffer.duration));
-        drawScene();
-        requestAnimFrame(function(){repaintWithContext(context)});
-    }
-    else {
-        //If paused allow scrolling around
-        playTime = offsetTime;
-        drawScene();
-    }
-}
-
-function repaintAnimation() {
-    if (animFrameNum < NAnimFrames) {
-        camera.theta = 2*Math.PI*animFrameNum/NAnimFrames;
-        camera.updateVecsFromPolar();
-        drawSceneAnim();
-        capturer.addFrame(glcanvas, {copy:true, delay:100});
-        animFrameNum++;
-        requestAnimFrame(repaintAnimation);
-    }
-    else {
-        loadString = "Making GIF";
-        capturer.render();
-
-        //Restore original camera parameters and repaint
-        camera.theta = origCamera.theta;
-        camera.phi = origCamera.phi;
-        camera.R = origCamera.R;
-        camera.center = origCamera.center;
-        camera.updateVecsFromPolar();
-        requestAnimFrame(drawScene);
-    }
-}
-
-function startAnimation() {
-    loading = true;
-    loadString = "Rendering frames";
-    loadColor = "yellow";
-    changeLoad();
-    capturer = new GIF({workers:2, quality:10, workerScript:"libs/gif.worker.js"});
-    capturer.on('finished', function(blob) {
-      window.open(URL.createObjectURL(blob));
-      loading = false;
-      waitingDisp.innerHTML = "<h3><font color = \"#00FF00\">Finished</font></h3>";
-    });
-    animFrameNum = 0;
-    var C = vec3.create();
-    vec3.copy(C, camera.center);
-    origCamera = {theta:camera.theta, phi:camera.phi, R:camera.R, center:C};
-    centerOnBBox();
-    requestAnimFrame(repaintAnimation);
-}
-
-
-function webGLStart() {
-    glcanvas = document.getElementById("LoopDittyGLCanvas");
-    glcanvas.addEventListener("contextmenu", function(e){ e.stopPropagation(); e.preventDefault(); return false; }); //Need this to disable the menu that pops up on right clicking
-
-    glcanvas.addEventListener('mousedown', makeClick);
-    glcanvas.addEventListener('mouseup', releaseClick);
-    glcanvas.addEventListener('mousemove', clickerDragged);
-    glcanvas.addEventListener('mouseout', mouseOut);
-
-    glcanvas.addEventListener('pointerdown', makeClick);
-    glcanvas.addEventListener('pointerup', releaseClick);
-    glcanvas.addEventListener('pointermove', clickerDragged);
-    glcanvas.addEventListener('pointerout', mouseOut);
-
-    /*interact(glcanvas)
-        .draggable({onstart:touchDragStart, onmove:touchDragged})
-        .gesturable({onmove:touchGesture})
-        .on('doubletap', touchToggleTap)
-        .preventDefault('always');*/
-
-    initGL(glcanvas);
-    initShaders();
-    centers = [0];
-    dims = [1];
-    initGLBuffers(WELCOME_CURVE);
-
-    gl.clearColor(0, 0, 0, 1.0);
-    gl.enable(gl.DEPTH_TEST);
-
-    requestAnimFrame(repaint);
+    
+    function startAnimation() {
+        loading = true;
+        loadString = "Rendering frames";
+        loadColor = "yellow";
+        changeLoad();
+        capturer = new GIF({workers:2, quality:10, workerScript:"libs/gif.worker.js"});
+        capturer.on('finished', function(blob) {
+          window.open(URL.createObjectURL(blob));
+          loading = false;
+          waitingDisp.innerHTML = "<h3><font color = \"#00FF00\">Finished</font></h3>";
+        });
+        animFrameNum = 0;
+        var C = vec3.create();
+        vec3.copy(C, camera.center);
+        origCamera = {theta:camera.theta, phi:camera.phi, R:camera.R, center:C};
+        centerOnBBox();
+        requestAnimationFrame(repaintAnimation);
+    }*/
+    
+    //Now that everying is defined, run the initalization
+    this.initInteractionHandlers();
+    this.initGL();
+    this.initShaders();
+    requestAnimationFrame(this.repaint.bind(this));
 }

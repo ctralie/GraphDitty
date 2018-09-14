@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import json
 import base64
 from SimilarityFusion import *
+from DiffusionMaps import *
 
 def imresize(D, dims, kind='cubic'):
     """
@@ -149,11 +150,16 @@ def saveResultsJSON(filename, time_interval, W, K, v, jsonfilename):
     Results['v'] = getBase64PNGImage(vout, 'afmhot')
     Results['v_height'] = vout.shape[0]
 
+    # Setup the graph
+    Results['graph'] = json.dumps(get_graph_obj(WOut, K))
+
+    # Setup diffusion maps
     c = plt.get_cmap('Spectral')
     C = c(np.array(np.round(np.linspace(0, 255,W.shape[0])), dtype=np.int32))
-    C = np.array(np.round(C[:, 0:3]*255), dtype=int)
+    C = C.flatten()
+    X = getDiffusionMap(W)[:, [-2, -3, -4]].flatten()
     Results['colors'] = C.tolist()
-    Results['graph'] = json.dumps(get_graph_obj(WOut, K))
+    Results['X'] = X.tolist()
 
     fout = open(jsonfilename, "w")
     fout.write(json.dumps(Results))

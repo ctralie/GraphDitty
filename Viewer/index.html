@@ -1,9 +1,13 @@
 <html>
 <head>
     <script src="jslibs/d3.min.js"></script>
+    <script src="jslibs/gl-matrix-min.js"></script>
+    <script src="jslibs/webgl-utils.js"></script>
     <script src="ProgressBar.js"></script>
     <script src="SimilarityCanvas.js"></script>
     <script src="ForceCanvas.js"></script>
+    <script src="Cameras3D.js"></script>
+    <script src="DiffusionGL.js"></script>
     <link rel="stylesheet" href="styles.css">
     </head>
 <body>
@@ -47,11 +51,15 @@
     <td>
         <div id="SSMContainer">
             <svg id="SimilarityCanvas" width="800" height="700"></svg><BR>
-            <svg id="EigCanvas" width="800" height="10"></svg>
+            <svg id="EigCanvas" width = "800" height = "10"></svg>
         </div>
 
         <div id="ForceContainer">
             <svg id="ForceCanvas" width = "800" height = "800"></svg>
+        </div>
+
+        <div id="DiffusionGLContainer">
+            <canvas id="DiffusionGLCanvas" width = "800" height = "800"></svg>
         </div>
     </td>
 </tr>

@@ -10,7 +10,8 @@ var audio_obj = {'audio_widget':document.getElementById("audio_widget"),
 audio_obj.audio_widget.style.width = 800;
 /** Objects for tab data {name, canvas object, active} */
 var tabdata = [{name:"Self-Similarity", canvas:new SimilarityCanvas(audio_obj), active:false}, 
-               {name:"Force Graph", canvas:new ForceCanvas(audio_obj), active:false}];
+               {name:"Force Graph", canvas:new ForceCanvas(audio_obj), active:false},
+               {name:"3D Diffusion Maps", canvas:new DiffusionGLCanvas(audio_obj), active:false}];
 
 
 /** Setup a handler to refresh the appropriate tab whenever something changes */
