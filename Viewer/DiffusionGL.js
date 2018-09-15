@@ -359,7 +359,7 @@ function DiffusionGLCanvas(audio_obj) {
             this.allVertexVBO = this.gl.createBuffer();
         }
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.allVertexVBO);
-        this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(this.X), this.gl.STATIC_DRAW);
+        this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(params.X), this.gl.STATIC_DRAW);
         this.allVertexVBO.itemSize = 3;
         this.allVertexVBO.numItems = this.N;
     
@@ -368,31 +368,31 @@ function DiffusionGLCanvas(audio_obj) {
             this.allColorVBO = this.gl.createBuffer();
         }
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.allColorVBO);
-        this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(this.colors), this.gl.STATIC_DRAW);
+        this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(params.colors), this.gl.STATIC_DRAW);
         this.allColorVBO.itemSize = 4; //Including alpha
         this.allColorVBO.numItems = this.N;
     
         //Now determine the bounding box of the curve and use
         //that to update the camera info
-        bbox = [params.X[0], params.X[0], params.X[1], params.X[1], params.X[2], params.X[2]];
+        this.bbox = [params.X[0], params.X[0], params.X[1], params.X[1], params.X[2], params.X[2]];
         for (i = 0; i < this.N; i++) {
-            if (params.X[i*3] < bbox[0]) {
-                bbox[0] = params.X[i*3];
+            if (params.X[i*3] < this.bbox[0]) {
+                this.bbox[0] = params.X[i*3];
             }
-            if (params.X[i*3] > bbox[1]) {
-                bbox[1] = params.X[i*3];
+            if (params.X[i*3] > this.bbox[1]) {
+                this.bbox[1] = params.X[i*3];
             }
-            if (params.X[i*3+1] < bbox[2]) {
-                bbox[2] = params.X[i*3+1];
+            if (params.X[i*3+1] < this.bbox[2]) {
+                this.bbox[2] = params.X[i*3+1];
             }
-            if (params.X[i*3+1] > bbox[3]) {
-                bbox[3] = params.X[i*3+1];
+            if (params.X[i*3+1] > this.bbox[3]) {
+                this.bbox[3] = params.X[i*3+1];
             }
-            if (params.X[i*3+2] < bbox[4]) {
-                bbox[4] = params.X[i*3+2];
+            if (params.X[i*3+2] < this.bbox[4]) {
+                this.bbox[4] = params.X[i*3+2];
             }
-            if (params.X[i*3+2] > bbox[5]) {
-                bbox[5] = params.X[i*3+2];
+            if (params.X[i*3+2] > this.bbox[5]) {
+                this.bbox[5] = params.X[i*3+2];
             }
         }
         this.centerOnBBox();
@@ -431,7 +431,7 @@ function DiffusionGLCanvas(audio_obj) {
             playIdx = Math.round(playIdx);
         }
 
-        if (this.allVertexVBO != -1 && this.allColorVBO != -1) {
+        if (this.allVertexVBO != -1 && this.allColorVBO != -1 && playIdx > 0) {
             this.gl.useProgram(this.shaderProgram);
             this.setUniforms(this.shaderProgram);
             //Step 1: Draw all points unsaturated
