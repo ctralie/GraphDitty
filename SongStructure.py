@@ -108,6 +108,7 @@ if __name__ == '__main__':
     parser.add_argument('--neigs', type=int, default=8, help="Number of eigenvectors in the graph Laplacian")
     parser.add_argument('--matfilename', type=str, default="out.mat", help="Name of the .mat file to which to save the results")
     parser.add_argument('--jsonfilename', type=str, default="out.json", help="Name of the .json file to which to save results for viewing in the GUI")
+    parser.add_argument('--diffusion_znormalize', type=int, default=0, help="Whether to perform Z-normalization with diffusion maps to spread things out more")
 
 
     opt = parser.parse_args()
@@ -116,5 +117,5 @@ if __name__ == '__main__':
         K=opt.K, reg_diag=opt.reg_diag, reg_neighbs=opt.reg_neighbs, niters=opt.niters, \
         neigs=opt.neigs, do_animation=opt.do_animation, plot_result=opt.plot_result)
     sio.savemat(opt.matfilename, res)
-    saveResultsJSON(opt.filename, res['time_interval'], res['WFused'], opt.K, res['v'], opt.jsonfilename)
+    saveResultsJSON(opt.filename, res['time_interval'], res['WFused'], opt.K, res['v'], opt.jsonfilename, opt.diffusion_znormalize)
     

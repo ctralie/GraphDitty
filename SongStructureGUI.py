@@ -4,6 +4,7 @@ import numpy as np
 import os
 import scipy.misc
 import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA
 import json
 import base64
 from SimilarityFusion import *
@@ -110,7 +111,7 @@ def get_graph_obj(W, K, res = 400):
     ret["fac"] = fac
     return ret
 
-def saveResultsJSON(filename, time_interval, W, K, v, jsonfilename):
+def saveResultsJSON(filename, time_interval, W, K, v, jsonfilename, diffusion_znormalize):
     """
     Save a JSON file holding the audio and structure information, which can 
     be parsed by SongStructureGUI.html.  Audio and images are stored as
@@ -131,6 +132,8 @@ def saveResultsJSON(filename, time_interval, W, K, v, jsonfilename):
         Eigenvectors of weighted Laplacian
     jsonfilename: string
         File to which to save the .json file
+    diffusion_znormalize: boolean
+        Whether to Z-normalize diffusion maps to spread things out more evenly
     """
     Results = {'songname':filename, 'time_interval':time_interval}
     print("Saving results...")
@@ -157,7 +160,14 @@ def saveResultsJSON(filename, time_interval, W, K, v, jsonfilename):
     c = plt.get_cmap('Spectral')
     C = c(np.array(np.round(np.linspace(0, 255,W.shape[0])), dtype=np.int32))
     C = C.flatten()
-    X = getDiffusionMap(W)[:, [-2, -3, -4]].flatten()
+    X = getDiffusionMap(W)
+    if diffusion_znormalize:
+        X = X - np.mean(X, 0)[None, :]
+        X = X/np.sqrt(np.sum(X**2, 1))[:, None]
+        pca = PCA(n_components=3)
+        X = pca.fit_transform(X).flatten()
+    else:
+        X = X[:, [-2, -3, -4]].flatten()
     Results['colors'] = C.tolist()
     Results['X'] = X.tolist()
 
