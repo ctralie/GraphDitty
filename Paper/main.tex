@@ -39,23 +39,34 @@
 %
 \maketitle
 %
-\begin{abstract}
-The abstract should be placed at the top left column and should contain about 150-200 words.
-\end{abstract}
-%
-\section{Introduction}\label{sec:introduction}
+
+\section{Overview}\label{sec:introduction}
+
+Music structure.
+
+In this work, we present a techinque to create clean audio self-similarity matrices at the song level by fusing multiple features.  We also 
 
 
 \begin{figure}
- \includegraphics[width=\columnwidth]{SimilarityMatrix_Laplacian.pdf}
- \caption{Similarity matrix and Laplacian eigenvectors.}
- \label{fig:example}
+    \includegraphics[width=\columnwidth]{SimilarityMatrix_Laplacian.pdf}
+    \caption{Similarity matrix and Laplacian eigenvectors after applying similarity network fusion to stack-delayed Chroma and MFCC features.  The SSM and eigenvectors are noticeably cleaner than those with just raw chroma in Figure~\ref{fig:SSMChroma}.}
+    \label{fig:SSMFused}
+   \end{figure}
+
+\begin{figure}
+    \includegraphics[width=\columnwidth]{SimilarityMatrix_Chroma.pdf}
+    \caption{Similarity matrix using the cosine distance on stack-delayed Chroma features.}
+    \label{fig:SSMChroma}
 \end{figure}
+   
+
+
+
 
 
 \begin{figure}
  \includegraphics[width=\columnwidth]{ForceGraph.pdf}
- \caption{Force graph.}
+ \caption{A dynamic weighted spring layout based on the weights in Figure~\ref{fig:SSMFused}, which is rendered with the help of d3.js \cite{bostock2012d3}.}
  \label{fig:example}
 \end{figure}
 
@@ -66,8 +77,11 @@ Keypoints
 *Amenable to many different types of visualization
 *Future work: exploring structure for audio cover song identification, similar to \cite{kinnaird2016aligned} on symbolic cover song identification
 
+ROYGBIV figures
+
 % For bibtex users:
 \bibliography{main}
 
+\cite{wang2012unsupervised, wang2014similarity,bendichgeometric,coifman2006diffusion,kinnaird2016aligned,mcfee2014analyzing,tralie2017cover,tralie2017Dissertation,bostock2012d3}
 
 \end{document}

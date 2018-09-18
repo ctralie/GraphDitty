@@ -12,11 +12,14 @@
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    id="svg2"
    version="1.1"
-   inkscape:version="0.91 r13725"
+   inkscape:version="0.92.3 (2405546, 2018-03-11)"
    width="872.5"
    height="730"
    viewBox="0 0 872.5 730"
-   sodipodi:docname="ForceGraph.svg">
+   sodipodi:docname="ForceGraph.svg"
+   inkscape:export-filename="/home/ctralie/Desktop/GraphDitty/Paper/Figures/ForceGraph.svg.png"
+   inkscape:export-xdpi="299.96713"
+   inkscape:export-ydpi="299.96713">
   <metadata
      id="metadata8">
     <rdf:RDF>
@@ -69,15 +72,15 @@
      guidetolerance="10"
      inkscape:pageopacity="0"
      inkscape:pageshadow="2"
-     inkscape:window-width="1526"
+     inkscape:window-width="1738"
      inkscape:window-height="702"
      id="namedview4"
      showgrid="true"
      inkscape:zoom="0.45719781"
-     inkscape:cx="185.8906"
+     inkscape:cx="-195.78227"
      inkscape:cy="467.46123"
-     inkscape:window-x="310"
-     inkscape:window-y="245"
+     inkscape:window-x="53"
+     inkscape:window-y="267"
      inkscape:window-maximized="0"
      inkscape:current-layer="svg2">
     <inkscape:grid
@@ -99,16 +102,15 @@
      inkscape:connector-curvature="0" />
   <text
      xml:space="preserve"
-     style="font-style:normal;font-weight:normal;font-size:40px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#ff9955;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+     style="font-style:normal;font-weight:normal;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#ff9955;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
      x="24.091797"
      y="346.02997"
-     id="text4577"
-     sodipodi:linespacing="125%"><tspan
+     id="text4577"><tspan
        sodipodi:role="line"
        id="tspan4579"
        x="24.091797"
        y="346.02997"
-       style="font-size:25px;fill:#ff9955;fill-opacity:1">Audio playing here</tspan></text>
+       style="font-size:25px;line-height:1.25;fill:#ff9955;fill-opacity:1">Audio playing here</tspan></text>
   <path
      style="fill:none;fill-rule:evenodd;stroke:#ff9955;stroke-width:4;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
      d="m 102.25333,184.83116 0.54681,-36.63622 166.57433,-0.0715 0,35"
@@ -116,16 +118,15 @@
      inkscape:connector-curvature="0" />
   <text
      xml:space="preserve"
-     style="font-style:normal;font-weight:normal;font-size:25px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+     style="font-style:normal;font-weight:normal;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
      x="128.03481"
      y="136.56171"
-     id="text4585"
-     sodipodi:linespacing="125%"><tspan
+     id="text4585"><tspan
        sodipodi:role="line"
        id="tspan4587"
        x="128.03481"
        y="136.56171"
-       style="font-size:25px;fill:#ff9955;fill-opacity:1">Chorus A</tspan></text>
+       style="font-size:25px;line-height:1.25;fill:#ff9955;fill-opacity:1">Chorus A</tspan></text>
   <path
      style="fill:none;fill-rule:evenodd;stroke:#5599ff;stroke-width:4;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
      d="m 719.02727,40.395938 -59.76564,0 0,190.601392 59.76564,0"
@@ -133,16 +134,15 @@
      inkscape:connector-curvature="0" />
   <text
      xml:space="preserve"
-     style="font-style:normal;font-weight:normal;font-size:20px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#5599ff;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+     style="font-style:normal;font-weight:normal;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#5599ff;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
      x="551.50519"
      y="141.90784"
-     id="text4591"
-     sodipodi:linespacing="125%"><tspan
+     id="text4591"><tspan
        sodipodi:role="line"
        id="tspan4593"
        x="551.50519"
        y="141.90784"
-       style="font-size:25px;fill:#5599ff;fill-opacity:1">Bridge</tspan></text>
+       style="font-size:25px;line-height:1.25;fill:#5599ff;fill-opacity:1">Bridge</tspan></text>
   <path
      style="fill:none;fill-rule:evenodd;stroke:#c83737;stroke-width:4;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
      d="m 673.04025,347.46822 0,60 160,0"
@@ -155,16 +155,15 @@
      inkscape:connector-curvature="0" />
   <text
      xml:space="preserve"
-     style="font-style:normal;font-weight:normal;font-size:20px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#c73838;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+     style="font-style:normal;font-weight:normal;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#c73838;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
      x="725.5191"
      y="442.82837"
-     id="text4607"
-     sodipodi:linespacing="125%"><tspan
+     id="text4607"><tspan
        sodipodi:role="line"
        id="tspan4609"
        x="725.5191"
        y="442.82837"
-       style="font-size:25px">Verse</tspan></text>
+       style="font-size:25px;line-height:1.25">Verse</tspan></text>
   <path
      style="fill:none;fill-rule:evenodd;stroke:#c83737;stroke-width:4;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
      d="m 25.868644,440.40254 0,60 159.999996,0"
@@ -177,16 +176,15 @@
      inkscape:connector-curvature="0" />
   <text
      xml:space="preserve"
-     style="font-style:normal;font-weight:normal;font-size:20px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#c73838;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+     style="font-style:normal;font-weight:normal;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#c73838;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
      x="74.618576"
      y="532.47394"
-     id="text4607-7"
-     sodipodi:linespacing="125%"><tspan
+     id="text4607-7"><tspan
        sodipodi:role="line"
        id="tspan4609-5"
        x="74.618576"
        y="532.47394"
-       style="font-size:25px">Intro</tspan></text>
+       style="font-size:25px;line-height:1.25">Intro</tspan></text>
   <path
      style="fill:none;fill-rule:evenodd;stroke:#e5ff80;stroke-width:4;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;stroke-miterlimit:4;stroke-dasharray:none"
      d="m 230,465 0,15 70,0 0,-15"
@@ -194,20 +192,19 @@
      inkscape:connector-curvature="0" />
   <text
      xml:space="preserve"
-     style="font-style:normal;font-weight:normal;font-size:15px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#e5ff80;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+     style="font-style:normal;font-weight:normal;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#e5ff80;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
      x="209.37868"
      y="505.46808"
-     id="text4675"
-     sodipodi:linespacing="125%"><tspan
+     id="text4675"><tspan
        sodipodi:role="line"
        id="tspan4677"
        x="209.37868"
        y="505.46808"
-       style="font-size:25px;fill:#e5ff80;fill-opacity:1">  Bridge  </tspan><tspan
+       style="font-size:25px;line-height:1.25;fill:#e5ff80;fill-opacity:1">  Bridge  </tspan><tspan
        sodipodi:role="line"
        x="209.37868"
-       y="536.71814"
-       style="font-size:25px;fill:#e5ff80;fill-opacity:1"
+       y="536.71808"
+       style="font-size:25px;line-height:1.25;fill:#e5ff80;fill-opacity:1"
        id="tspan4685">Transition</tspan></text>
   <path
      style="fill:none;fill-rule:evenodd;stroke:#d3bc5f;stroke-width:4;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
@@ -216,14 +213,13 @@
      inkscape:connector-curvature="0" />
   <text
      xml:space="preserve"
-     style="font-style:normal;font-weight:normal;font-size:20px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#c73838;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+     style="font-style:normal;font-weight:normal;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#c73838;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
      x="356.95978"
      y="615.20129"
-     id="text4607-5"
-     sodipodi:linespacing="125%"><tspan
+     id="text4607-5"><tspan
        sodipodi:role="line"
        id="tspan4609-6"
        x="356.95978"
        y="615.20129"
-       style="font-size:25px;fill:#d3bc5f;fill-opacity:1">Chorus B</tspan></text>
+       style="font-size:25px;line-height:1.25;fill:#d3bc5f;fill-opacity:1">Chorus B</tspan></text>
 </svg>
