@@ -12,6 +12,7 @@ function getMousePos(evt) {
 
 function DiffusionGLCanvas(audio_obj) {
     this.audio_obj = audio_obj;
+    this.glcontainer = document.getElementById("DiffusionGLContainer");
     this.glcanvas = document.getElementById("DiffusionGLCanvas");
     this.gl = 0;
     
@@ -234,7 +235,7 @@ function DiffusionGLCanvas(audio_obj) {
             alert("Could not initialise WebGL, sorry :-(.  Try a new version of chrome or firefox and make sure your newest graphics drivers are installed");
             return;
         }
-        this.gl.clearColor(0, 0, 0, 1.0);
+        this.gl.clearColor(0.125, 0.125, 0.125, 1.0);
         this.gl.enable(this.gl.DEPTH_TEST);
     };
 
@@ -404,14 +405,14 @@ function DiffusionGLCanvas(audio_obj) {
 	 * A function which toggles all of the visible elements to show
 	 */
 	this.show = function() {
-		this.glcanvas.style.display = "block";
+		this.glcontainer.style.display = "block";
 	};
 
 	/**
 	 * A function which toggles all of the visible elements to hide
 	 */
 	this.hide = function() {
-		this.glcanvas.style.display = "none";
+		this.glcontainer.style.display = "none";
 	};
 
     

@@ -9,6 +9,7 @@
  *  of the SSM, and the dimension "dim" of the SSM
  */
 function SimilarityCanvas(audio_obj) {
+	this.ssmcontainer = d3.select("#SSMContainer");
 	this.ssmcanvas = d3.select("#SimilarityCanvas");
     this.eigcanvas = d3.select("#EigCanvas");
 	this.CSImage = this.ssmcanvas.append('image');
@@ -60,16 +61,14 @@ function SimilarityCanvas(audio_obj) {
 	 * A function which toggles all of the visible elements to show
 	 */
 	this.show = function() {
-		this.ssmcanvas.style("display", "block");
-		this.eigcanvas.style("display", "block");
+		this.ssmcontainer.style("display", "block");
 	};
 
 	/**
 	 * A function which toggles all of the visible elements to hide
 	 */
 	this.hide = function() {
-		this.ssmcanvas.style("display", "none");
-		this.eigcanvas.style("display", "none");
+		this.ssmcontainer.style("display", "none");
 	};
 
 	/**

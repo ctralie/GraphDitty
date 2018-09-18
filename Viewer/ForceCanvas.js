@@ -10,6 +10,7 @@
  */
 function ForceCanvas(audio_obj) {
 	this.graphcanvas = d3.select("#ForceCanvas");
+	this.graphcontainer = d3.select("#ForceContainer");
 	this.audio_obj = audio_obj;
 	this.fac = 1; //Downsampling factor from full SSM image
 	this.nodes = [];
@@ -137,14 +138,14 @@ function ForceCanvas(audio_obj) {
 	 * A function which toggles all of the visible elements to show
 	 */
 	this.show = function() {
-		this.graphcanvas.style("display", "block");
+		this.graphcontainer.style("display", "block");
 	};
 
 	/**
 	 * A function which toggles all of the visible elements to hide
 	 */
 	this.hide = function() {
-		this.graphcanvas.style("display", "none");
+		this.graphcontainer.style("display", "none");
 	};
 
 
