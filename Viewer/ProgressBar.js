@@ -14,7 +14,7 @@ function ProgressBar() {
             return;
         }
         var s = "<h3><font color = \"" + this.loadColor + "\">" + this.loadString;
-        for (var i = 0; i < ndots; i++) {
+        for (var i = 0; i < this.ndots; i++) {
             s += ".";
         }
         s += "</font></h3>";

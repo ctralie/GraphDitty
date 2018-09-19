@@ -73,6 +73,19 @@ for (var i = 0; i < tabdata.length; i++) {
 }
 
 
+function setupSong(params) {
+    //Setup audio buffers
+    audio_obj.audio_widget.src = params.audio;
+    audio_obj.time_interval = params.time_interval;
+    audio_obj.dim = params.dim;
+    songnameTxt.innerHTML = params.songname;
+    for (var i = 0; i < tabdata.length; i++) {
+        tabdata[i].canvas.updateParams(params);
+    }
+    refreshDisplays();
+    progressBar.changeToReady();
+}
+
 /** Setup file input button handler */
 var fileInput = document.getElementById('fileInput');
 fileInput.addEventListener('change', function(e) {
@@ -80,20 +93,30 @@ fileInput.addEventListener('change', function(e) {
     var reader = new FileReader();
     reader.onload = function(e) {
         var params = JSON.parse(reader.result);
-        //Setup audio buffers
-        audio_obj.audio_widget.src = params.audio;
-        audio_obj.time_interval = params.time_interval;
-        audio_obj.dim = params.dim;
-        songnameTxt.innerHTML = params.songname;
-        for (var i = 0; i < tabdata.length; i++) {
-            tabdata[i].canvas.updateParams(params);
-        }
-        refreshDisplays();
-        progressBar.changeToReady();
+        setupSong(params);
     };
     reader.readAsText(file);
 });
 
+
+function loadPrecomputedSong(file) {
+    progressBar.loadString = "Reading data from server";
+    progressBar.loadColor = "red";
+    progressBar.loading = true;
+    progressBar.changeLoad();
+
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', file, true);
+    xhr.responseType = 'json';
+    xhr.onload = function(err) {
+        setupSong(this.response);
+    };
+    progressBar.loading = true;
+    progressBar.ndots = 0;
+    progressBar.changeLoad();
+    xhr.send();
+
+}
 
 audio_obj.audio_widget.addEventListener("play", refreshDisplays);
 audio_obj.audio_widget.addEventListener("pause", refreshDisplays);
