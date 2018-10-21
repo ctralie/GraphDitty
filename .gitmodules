@@ -1,0 +1,3 @@
+[submodule "SALAMI"]
+	path = SALAMI
+	url = https://github.com/DDMAL/SALAMI.git
