@@ -176,7 +176,7 @@ def doSimilarityFusionWs(Ws, K = 5, niters = 20, reg_diag = 1, reg_neighbs = 0.5
     if do_animation:
         res = 5
         plt.figure(figsize=(res*N, res*2))
-        from Laplacian import getLaplacianEigsDense
+        from Laplacian import getUnweightedLaplacianEigsDense
     for it in range(niters):
         ticiter = time.time()
         if do_animation:
@@ -195,8 +195,7 @@ def doSimilarityFusionWs(Ws, K = 5, niters = 20, reg_diag = 1, reg_neighbs = 0.5
                 #Compute Laplacian eigenvectors
                 """
                 NEigs = 20
-                (w, v, L) = getLaplacianEigsDense(Pts[i], NEigs)
-                print(w)
+                v = getUnweightedLaplacianEigsDense(Pts[i], NEigs)
                 plt.subplot(2, N, N+i+1)
                 if PlotExtents:
                     plt.imshow(v, cmap = 'afmhot', aspect = 'auto', interpolation = 'none', \

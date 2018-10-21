@@ -12,27 +12,81 @@ from CSMSSMTools import getCSM, getCSMCosine
 from SimilarityFusion import doSimilarityFusion
 from SongStructureGUI import saveResultsJSON
 
+def plotFusionWithEigvecs(Ws, vs, PlotExtents):
+    """
+    Show a plot of different adjacency matrices and their associated eigenvectors
+    Parameters
+    ----------
+    Ws: Dictionary of string:ndarray(N, N)
+        Different adjacency matrix types
+    vs: Dictionary of string:ndarray(N, k)
+        Laplacian eigenvectors for different adjacency matrix types.
+        If there is not a key for a particular adjacency matrix type, it isn't plotted
+    PlotExtents: [float, float]
+        The begin and end time spanned by each adjacency matrix
+    
+    Returns
+    -------
+    fig: matplotlib.pyplot object
+        Handle to the figure
+    """
+    fig = plt.figure(figsize=(10*len(Ws), 8))
+    for i, name in enumerate(Ws):
+        W = Ws[name]
+        WShow = np.array(W)
+        np.fill_diagonal(WShow, 0)
+        plt.subplot2grid((1, 8*len(Ws)), (0, i*8), colspan=7)
+        plt.imshow(np.log(5e-2+WShow), interpolation = 'nearest', cmap = 'afmhot', \
+        extent = (PlotExtents[0], PlotExtents[1], PlotExtents[1], PlotExtents[0]))
+        plt.title("%s Similarity Matrix"%name)
+        plt.xlabel("Time (sec)")
+        plt.ylabel("Time (sec)")
+        if name in vs:
+            v = vs[name]
+            plt.subplot2grid((1, 8*len(Ws)), (0, i*8+7))
+            plt.imshow(v, cmap='afmhot', interpolation = 'nearest', aspect='auto', \
+                extent=(0, v.shape[1], PlotExtents[1], PlotExtents[0]))
+            plt.title("Laplacian")
+            plt.xlabel("Eigenvector Num")
+            plt.xticks(0.5 + np.arange(v.shape[1]), ["%i"%(i+1) for i in range(v.shape[1])])
+    plt.tight_layout()
+    return fig
+
 
 def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, reg_diag, reg_neighbs, niters, do_animation, plot_result):
     """
     Load in filename, compute features, average/stack delay, and do similarity
-    network fusion (SNF)
-    :param filename: Path to music file
-    :param sr: Sample rate at which to sample file
-    :param hop_length: Hop size between frames in chroma and mfcc
-    :param win_fac: Number of frames to average (i.e. factor by which to downsample)
-    :param wins_per_block: Number of aggregated windows per sliding window block
-    :param K: Number of nearest neighbors in SNF
-    :param reg_diag: Regularization for self-similarity promotion
-    :param reg_neighbs: Regularization for direct neighbor similarity promotion
-    :param niters: Number of iterations in SNF
-    :param do_animation: Whether to plot and save images of the evolution of SNF
-    :param plot_result: Whether to plot the result of the fusion
-    :returns {'Ws': An array of weighted adjacency matrices for individual features, \
-            'WFused': The fused adjacency matrix, \
-            'times': Timestamps in seconds of each element in the adjacency matrices, \
-            'BlockLen': Length of each stacked delay block in seconds, \
-            'FeatureNames': Names of the features used, parallel with Ws}
+    network fusion (SNF) on all feature types
+    Parameters
+    ----------
+    filename: string
+        Path to music file
+    sr: int
+        Sample rate at which to sample file
+    hop_length: int
+        Hop size between frames in chroma and mfcc
+    win_fac: int
+        Number of frames to average (i.e. factor by which to downsample)
+    wins_per_block: int
+        Number of aggregated windows per sliding window block
+    K: int
+        Number of nearest neighbors in SNF
+    reg_diag: float 
+        Regularization for self-similarity promotion
+    reg_neighbs: float
+        Regularization for direct neighbor similarity promotion
+    niters: int
+        Number of iterations in SNF
+    do_animation: boolean
+        Whether to plot and save images of the evolution of SNF
+    plot_result: boolean
+        Whether to plot the result of the fusion
+    
+    Returns
+    -------
+    {'Ws': An dictionary of weighted adjacency matrices for individual features
+                    and the fused adjacency matrix, 
+            'time_interval': Time in seconds between each window} 
     """
     print("Loading %s..."%filename)
     y, sr = librosa.load(filename, sr=sr)
@@ -69,18 +123,14 @@ def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, reg
         reg_diag=reg_diag, reg_neighbs=reg_neighbs, \
         do_animation=do_animation, PlotNames=FeatureNames, \
         PlotExtents=PlotExtents) 
+    WsDict = {}
+    for n, W in zip(FeatureNames, Ws):
+        WsDict[n] = W
+    WsDict['Fused'] = WFused
     if plot_result:
-        plt.figure(figsize=(10, 10))
-        WShow = np.array(WFused)
-        np.fill_diagonal(WShow, 0)
-        plt.imshow(np.log(5e-2+WShow), interpolation = 'nearest', cmap = 'afmhot', \
-        extent = (PlotExtents[0], PlotExtents[1], PlotExtents[1], PlotExtents[0]))
-        plt.title("Similarity Matrix")
-        plt.xlabel("Time (sec)")
-        plt.ylabel("Time (sec)")
+        plotFusionWithEigvecs(WsDict, {}, PlotExtents)
         plt.show()
-    return {'Ws':Ws, 'WFused':WFused, 'time_interval':time_interval,\
-            'BlockLen':time_interval*wins_per_block, 'FeatureNames':FeatureNames}
+    return {'Ws':WsDict, 'time_interval':time_interval}
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -107,5 +157,5 @@ if __name__ == '__main__':
         K=opt.K, reg_diag=opt.reg_diag, reg_neighbs=opt.reg_neighbs, niters=opt.niters, \
         do_animation=opt.do_animation, plot_result=opt.plot_result)
     sio.savemat(opt.matfilename, res)
-    saveResultsJSON(opt.filename, res['time_interval'], res['WFused'], opt.K, opt.neigs, opt.jsonfilename, opt.diffusion_znormalize)
+    saveResultsJSON(opt.filename, res['time_interval'], res['Ws'], opt.K, opt.neigs, opt.jsonfilename, opt.diffusion_znormalize)
     

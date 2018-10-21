@@ -10,6 +10,7 @@ import os
 from CSMSSMTools import getCSM, getCSMCosine
 from Laplacian import *
 from SimilarityFusion import getW, doSimilarityFusionWs
+from SongStructure import *
 from multiprocessing import Pool as PPool
 
 """
@@ -87,6 +88,7 @@ def compute_features(num, do_plot=False):
     print("Doing %i..."%num)
     
     # Step 1: Initialize Feature/Fusion Parameters
+    lapfn = getRandomWalkLaplacianEigsDense
     sr=22050
     hop_length=512
     win_fac=10
@@ -96,67 +98,19 @@ def compute_features(num, do_plot=False):
     reg_neighbs=0.5
     niters=10
     neigs=10
-    
-    y, sr = librosa.load(filename, sr=sr)
-    chroma = librosa.feature.chroma_stft(y=y, sr=sr, hop_length=hop_length)
-    S = librosa.feature.melspectrogram(y, sr=sr, n_mels=128, hop_length=hop_length)
-    log_S = librosa.power_to_db(S, ref=np.max)
-    mfcc = librosa.feature.mfcc(S=log_S, n_mfcc=20)
-    
-    # Step 2: Compute features in intervals evenly spaced by the hop size
-    # but average within "win_fac" intervals of hop_length
-    nHops = int((y.size-hop_length*win_fac*wins_per_block)/hop_length)
-    intervals = np.arange(0, nHops, win_fac)
-    intervals = librosa.util.fix_frames(intervals, x_min=0, x_max=min(mfcc.shape[1], chroma.shape[1]))
-    chroma = librosa.util.sync(chroma, intervals)
-    mfcc = librosa.util.sync(mfcc, intervals)
 
-    n_frames = min(chroma.shape[1], mfcc.shape[1])
-    chroma = chroma[:, :n_frames]
-    mfcc = mfcc[:, :n_frames]
+    # Step 2: Compute feature-based similarity matrix and the matrix
+    # fusing all of them
+    res = getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, reg_diag, reg_neighbs, niters, False, False)
+    Ws, time_interval = res['Ws'], res['time_interval']
 
-    # Step 3: Do a delay embedding and compute SSMs
-    XChroma = librosa.feature.stack_memory(chroma, n_steps=wins_per_block, mode='edge').T
-    XMFCC = librosa.feature.stack_memory(mfcc, n_steps=wins_per_block, mode='edge').T
-    DChroma = getCSMCosine(XChroma, XChroma) #Cosine distance
-    DMFCC = getCSM(XMFCC, XMFCC) #Euclidean distance
-
-    # Step 4: Run similarity network fusion
-    FeatureNames = ['MFCCs', 'Chromas', 'Fused']
-    Ds = [DMFCC, DChroma]
-    Ws = [getW(D, K) for D in Ds]
-    time_interval = hop_length*win_fac/float(sr)
-    WFused = doSimilarityFusionWs(Ws, K=K, niters=niters, \
-        reg_diag=reg_diag, reg_neighbs=reg_neighbs) 
-    Ws.append(WFused)
-
-    # Step 5: Compute Laplacian eigenvectors and perform spectral clustering
+    # Step 3: Compute Laplacian eigenvectors and perform spectral clustering
     # at different resolutions
-    vs = []
-    
-    for W in Ws:
-        _, v, _ = getSymmetricLaplacianEigsDense(W, neigs)
-        vs.append(v)
+    vs = {name:lapfn(Ws[name])[:, 1:neigs+1] for name in Ws}
 
     if do_plot:
-        PlotExtents = [0, time_interval*WFused.shape[0]]
-        fig = plt.figure(figsize=(8*len(Ws), 6))
-        for i, (W, v, name) in enumerate(zip(Ws, vs, FeatureNames)):
-            WShow = np.array(W)
-            np.fill_diagonal(WShow, 0)
-            plt.subplot2grid((1, 8*len(Ws)), (0, i*8), colspan=7)
-            plt.imshow(np.log(5e-2+WShow), interpolation = 'nearest', cmap = 'afmhot', \
-            extent = (PlotExtents[0], PlotExtents[1], PlotExtents[1], PlotExtents[0]))
-            plt.title("%s Similarity Matrix"%name)
-            plt.xlabel("Time (sec)")
-            plt.ylabel("Time (sec)")
-            plt.subplot2grid((1, 8*len(Ws)), (0, i*8+7))
-            plt.imshow(v, cmap='afmhot', interpolation = 'nearest', aspect='auto', \
-                extent=(0, v.shape[1], PlotExtents[1], PlotExtents[0]))
-            plt.title("Laplacian")
-            plt.xlabel("Eigenvector Num")
-            plt.xticks(0.5 + np.arange(v.shape[1]), ["%i"%(i+1) for i in range(v.shape[1])])
-        plt.tight_layout()
+        PlotExtents = [0, time_interval*Ws['Fused'].shape[0]]
+        fig = plotFusionWithEigvecs(Ws, vs, PlotExtents)
         figpath = "%s/%i/Fusion.png"%(AUDIO_DIR, num)
         print("Saving to %s"%figpath)
         plt.savefig(figpath, bbox_inches='tight')

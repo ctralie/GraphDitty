@@ -1,33 +1,66 @@
 import sys
+import scipy
 import scipy.sparse as sparse
-import scipy.stats
-import scipy.sparse.linalg as slinalg
 import numpy as np
 import numpy.linalg as linalg
-import scipy.io as sio
-import matplotlib.pyplot as plt
-from scipy.ndimage.filters import median_filter
+import scipy.linalg as sclinalg
 
-def getUnweightedLaplacianEigsDense(A, neigs):
-    DEG = scipy.sparse.dia_matrix((A.sum(1).flatten(), 0), A.shape)
-    L = DEG.toarray() - A
-    w, v = linalg.eigh(L)
-    return (w[0:neigs], v[:, 0:neigs], L)
+def getUnweightedLaplacianEigsDense(W):
+    """
+    Get eigenvectors of the unweighted Laplacian
+    Parameters
+    ----------
+    W: ndarray(N, N)
+        A symmetric similarity matrix that has nonnegative entries everywhere
+    
+    Returns
+    -------
+    v: ndarray(N, N)
+        A matrix of eigenvectors
+    """
+    D = scipy.sparse.dia_matrix((W.sum(1).flatten(), 0), W.shape).toarray()
+    L = D - W
+    _, v = linalg.eigh(L)
+    return v
 
-def getSymmetricLaplacianEigsDense(W, neigs):
+def getSymmetricLaplacianEigsDense(W):
     """
     Get eigenvectors of the weighted symmetric Laplacian
     Parameters
     ----------
     W: ndarray(N, N)
         A symmetric similarity matrix that has nonnegative entries everywhere
-    neigs: int
-        Number of eigenvectors to compute
+    
+    Returns
+    -------
+    v: ndarray(N, N)
+        A matrix of eigenvectors
     """
     D = scipy.sparse.dia_matrix((W.sum(1).flatten(), 0), W.shape).toarray()
-    DInvSqrt = 1/np.sqrt(D)
-    DInvSqrt[~np.isfinite(DInvSqrt)] = 1.0
     L = D - W
+    SqrtD = np.sqrt(D)
+    SqrtD[SqrtD == 0] = 1.0
+    DInvSqrt = 1/SqrtD
     LSym = DInvSqrt.dot(L.dot(DInvSqrt))
-    w, v = linalg.eigh(LSym)
-    return (w[0:neigs], v[:, 0:neigs], L)
+    _, v = linalg.eigh(LSym)
+    return v
+
+def getRandomWalkLaplacianEigsDense(W):
+    """
+    Get eigenvectors of the random walk Laplacian by solving
+    the generalized eigenvalue problem
+    L*u = lam*D*u
+    Parameters
+    ----------
+    W: ndarray(N, N)
+        A symmetric similarity matrix that has nonnegative entries everywhere
+    
+    Returns
+    -------
+    v: ndarray(N, N)
+        A matrix of eigenvectors
+    """
+    D = scipy.sparse.dia_matrix((W.sum(1).flatten(), 0), W.shape).toarray()
+    L = D - W
+    _, v = sclinalg.eigh(L, D)
+    return v
