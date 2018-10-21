@@ -58,6 +58,7 @@ def plotFusionResults(Ws, vs, alllabels, PlotExtents):
             labels = alllabels[name]['labels']
             plt.imshow(labels[:, None], cmap='tab20b', interpolation = 'nearest', aspect='auto', \
                 extent=(0, 1, PlotExtents[1], PlotExtents[0]))
+            plt.title("Clusters")
     plt.tight_layout()
     return fig
 
