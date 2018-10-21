@@ -234,7 +234,8 @@ def doSimilarityFusionWs(Ws, K = 5, niters = 20, reg_diag = 1, reg_neighbs = 0.5
                 nextPts[i][np.abs(I - J) == 1] += reg_neighbs
 
         Pts = nextPts
-        print("Elapsed Time Iter %i of %i: %g"%(it+1, niters, time.time()-ticiter))
+        if verboseTimes:
+            print("Elapsed Time Iter %i of %i: %g"%(it+1, niters, time.time()-ticiter))
     if verboseTimes:
         print("Total Time multiplying: %g"%np.sum(np.array(AllTimes)))
     FusedScores = np.zeros(Pts[0].shape)

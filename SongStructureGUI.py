@@ -9,6 +9,7 @@ import json
 import base64
 from SimilarityFusion import *
 from DiffusionMaps import *
+from Laplacian import *
 
 def imresize(D, dims, kind='cubic'):
     """
@@ -111,7 +112,7 @@ def get_graph_obj(W, K, res = 400):
     ret["fac"] = fac
     return ret
 
-def saveResultsJSON(filename, time_interval, W, K, v, jsonfilename, diffusion_znormalize):
+def saveResultsJSON(filename, time_interval, W, K, neigs, jsonfilename, diffusion_znormalize):
     """
     Save a JSON file holding the audio and structure information, which can 
     be parsed by SongStructureGUI.html.  Audio and images are stored as
@@ -128,8 +129,8 @@ def saveResultsJSON(filename, time_interval, W, K, v, jsonfilename, diffusion_zn
         apart from its adjacent rows
     K: int
         Number of nearest neighbors to use in graph representation
-    v: ndarray(N, k)
-        Eigenvectors of weighted Laplacian
+    neigs: int
+        Number of eigenvectors to compute in graph Laplacian
     jsonfilename: string
         File to which to save the .json file
     diffusion_znormalize: boolean
@@ -145,6 +146,11 @@ def saveResultsJSON(filename, time_interval, W, K, v, jsonfilename, diffusion_zn
     Results['W'] = getBase64PNGImage(WOut, 'afmhot', 5e-2)
     Results['dim'] = W.shape[0]
     
+    # Compute Laplacian eigenvectors
+    _, v, _ = getUnweightedLaplacianEigsDense(W, neigs)
+    v = v[:, 1::]
+
+
     # Resize the eigenvectors so they're easier to see
     fac = 10
     vout = np.zeros((v.shape[1]*fac, v.shape[0]))
