@@ -150,7 +150,7 @@ def saveResultsJSON(filename, time_interval, Ws, K, neigs, jsonfilename, diffusi
     
     # Compute Laplacian eigenvectors
     tic = time.time()
-    v = getSymmetricLaplacianEigsDense(W)
+    v = getRandomWalkLaplacianEigsDense(W)
     v = v[:, 1:neigs+1]
     print("Elapsed Time Laplacian: %.3g"%(time.time()-tic))
 

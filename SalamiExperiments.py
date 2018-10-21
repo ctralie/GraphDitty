@@ -88,7 +88,8 @@ def compute_features(num, do_plot=False):
     print("Doing %i..."%num)
     
     # Step 1: Initialize Feature/Fusion Parameters
-    lapfn = getRandomWalkLaplacianEigsDense
+    lapfn = getUnweightedLaplacianEigsDense
+    specfn = lambda v, dim, time_interval: spectralClusterSequential(v, dim, time_interval, rownorm=False)
     sr=22050
     hop_length=512
     win_fac=10
@@ -97,7 +98,7 @@ def compute_features(num, do_plot=False):
     reg_diag=1.0
     reg_neighbs=0.5
     niters=10
-    neigs=10
+    neigs=4
 
     # Step 2: Compute feature-based similarity matrix and the matrix
     # fusing all of them
@@ -107,10 +108,11 @@ def compute_features(num, do_plot=False):
     # Step 3: Compute Laplacian eigenvectors and perform spectral clustering
     # at different resolutions
     vs = {name:lapfn(Ws[name])[:, 1:neigs+1] for name in Ws}
+    alllabels = {name:specfn(vs[name], neigs, time_interval) for name in Ws}
 
     if do_plot:
         PlotExtents = [0, time_interval*Ws['Fused'].shape[0]]
-        fig = plotFusionWithEigvecs(Ws, vs, PlotExtents)
+        fig = plotFusionResults(Ws, vs, alllabels, PlotExtents)
         figpath = "%s/%i/Fusion.png"%(AUDIO_DIR, num)
         print("Saving to %s"%figpath)
         plt.savefig(figpath, bbox_inches='tight')

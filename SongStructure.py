@@ -12,15 +12,19 @@ from CSMSSMTools import getCSM, getCSMCosine
 from SimilarityFusion import doSimilarityFusion
 from SongStructureGUI import saveResultsJSON
 
-def plotFusionWithEigvecs(Ws, vs, PlotExtents):
+def plotFusionResults(Ws, vs, alllabels, PlotExtents):
     """
     Show a plot of different adjacency matrices and their associated eigenvectors
+    and cluster labels, if applicable
     Parameters
     ----------
     Ws: Dictionary of string:ndarray(N, N)
         Different adjacency matrix types
     vs: Dictionary of string:ndarray(N, k)
         Laplacian eigenvectors for different adjacency matrix types.
+        If there is not a key for a particular adjacency matrix type, it isn't plotted
+    alllabels: Dictionary of string:ndarray(N)
+        Labels from spectral clustering for different adjacency matrix types.
         If there is not a key for a particular adjacency matrix type, it isn't plotted
     PlotExtents: [float, float]
         The begin and end time spanned by each adjacency matrix
@@ -35,7 +39,7 @@ def plotFusionWithEigvecs(Ws, vs, PlotExtents):
         W = Ws[name]
         WShow = np.array(W)
         np.fill_diagonal(WShow, 0)
-        plt.subplot2grid((1, 8*len(Ws)), (0, i*8), colspan=7)
+        plt.subplot2grid((1, 9*len(Ws)), (0, i*9), colspan=7)
         plt.imshow(np.log(5e-2+WShow), interpolation = 'nearest', cmap = 'afmhot', \
         extent = (PlotExtents[0], PlotExtents[1], PlotExtents[1], PlotExtents[0]))
         plt.title("%s Similarity Matrix"%name)
@@ -43,12 +47,17 @@ def plotFusionWithEigvecs(Ws, vs, PlotExtents):
         plt.ylabel("Time (sec)")
         if name in vs:
             v = vs[name]
-            plt.subplot2grid((1, 8*len(Ws)), (0, i*8+7))
+            plt.subplot2grid((1, 9*len(Ws)), (0, i*9+7))
             plt.imshow(v, cmap='afmhot', interpolation = 'nearest', aspect='auto', \
                 extent=(0, v.shape[1], PlotExtents[1], PlotExtents[0]))
             plt.title("Laplacian")
             plt.xlabel("Eigenvector Num")
             plt.xticks(0.5 + np.arange(v.shape[1]), ["%i"%(i+1) for i in range(v.shape[1])])
+        if name in alllabels:
+            plt.subplot2grid((1, 9*len(Ws)), (0, i*9+8))
+            labels = alllabels[name]['labels']
+            plt.imshow(labels[:, None], cmap='tab20b', interpolation = 'nearest', aspect='auto', \
+                extent=(0, 1, PlotExtents[1], PlotExtents[0]))
     plt.tight_layout()
     return fig
 
@@ -128,7 +137,7 @@ def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, reg
         WsDict[n] = W
     WsDict['Fused'] = WFused
     if plot_result:
-        plotFusionWithEigvecs(WsDict, {}, PlotExtents)
+        plotFusionResults(WsDict, {}, {}, PlotExtents)
         plt.show()
     return {'Ws':WsDict, 'time_interval':time_interval}
 
@@ -158,4 +167,3 @@ if __name__ == '__main__':
         do_animation=opt.do_animation, plot_result=opt.plot_result)
     sio.savemat(opt.matfilename, res)
     saveResultsJSON(opt.filename, res['time_interval'], res['Ws'], opt.K, opt.neigs, opt.jsonfilename, opt.diffusion_znormalize)
-    
