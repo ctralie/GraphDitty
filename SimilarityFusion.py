@@ -29,7 +29,9 @@ def getW(D, K, Mu = 0.5):
     #by looking at k nearest neighbors, not including point itself
     Eps = MeanDist[:, None] + MeanDist[None, :] + DSym
     Eps = Eps/3
-    W = np.exp(-DSym**2/(2*(Mu*Eps)**2))
+    Denom = (2*(Mu*Eps)**2)
+    Denom[Denom == 0] = 1
+    W = np.exp(-DSym**2/Denom)
     return W
 
 def getWCSM(CSMAB, k1, k2, Mu = 0.5):

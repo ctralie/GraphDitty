@@ -21,7 +21,10 @@ def getUnweightedLaplacianEigsDense(W):
     """
     D = scipy.sparse.dia_matrix((W.sum(1).flatten(), 0), W.shape).toarray()
     L = D - W
-    _, v = linalg.eigh(L)
+    try:
+        _, v = linalg.eigh(L)
+    except:
+        return np.zeros_like(W)
     return v
 
 def getSymmetricLaplacianEigsDense(W):
@@ -43,7 +46,10 @@ def getSymmetricLaplacianEigsDense(W):
     SqrtD[SqrtD == 0] = 1.0
     DInvSqrt = 1/SqrtD
     LSym = DInvSqrt.dot(L.dot(DInvSqrt))
-    _, v = linalg.eigh(LSym)
+    try:
+        _, v = linalg.eigh(LSym)
+    except:
+        return np.zeros_like(W)
     return v
 
 def getRandomWalkLaplacianEigsDense(W):
@@ -63,7 +69,10 @@ def getRandomWalkLaplacianEigsDense(W):
     """
     D = scipy.sparse.dia_matrix((W.sum(1).flatten(), 0), W.shape).toarray()
     L = D - W
-    _, v = sclinalg.eigh(L, D)
+    try:
+        _, v = sclinalg.eigh(L, D)
+    except:
+        return np.zeros_like(W)
     return v
 
 def spectralClusterSequential(v, dim, time_interval, rownorm=False):

@@ -80,6 +80,7 @@ def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, reg
         Hop size between frames in chroma and mfcc
     win_fac: int
         Number of frames to average (i.e. factor by which to downsample)
+        If -1, then do beat tracking
     wins_per_block: int
         Number of aggregated windows per sliding window block
     K: int
@@ -132,6 +133,13 @@ def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, reg
     time_interval = hop_length*win_fac/float(sr)
     print("Interval = %.3g Seconds, Block = %.3g Seconds"%(time_interval, time_interval*wins_per_block))
     PlotExtents = [0, time_interval*DMFCC.shape[0]]
+    # Edge case: zeropad if it's too small
+    for i, Di in enumerate(Ds):
+        if Di.shape[0] < 2*K:
+            D = np.zeros((2*K, 2*K))
+            D[0:Di.shape[0], 0:Di.shape[1]] = Di
+            Ds[i] = D
+
     (Ws, WFused) = doSimilarityFusion(Ds, K=K, niters=niters, \
         reg_diag=reg_diag, reg_neighbs=reg_neighbs, \
         do_animation=do_animation, PlotNames=FeatureNames, \

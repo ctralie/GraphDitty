@@ -180,6 +180,9 @@ def aggregate_experiments_results():
                 nanno = nres.shape[0]
             idxs += [num]*nanno
     idxs = np.array(idxs)
+    res = {a:prls[a] for a in prls}
+    res['idxs'] = idxs
+    sio.savemat("allresults.mat", res)
 
     # Step 3: Plot distribution and KS-score of feature-based agreements
     # versus inter-annotator agreements
@@ -226,5 +229,4 @@ def aggregate_experiments_results():
 if __name__ == '__main__':
     #get_inter_anno_agreement()
     #run_audio_experiments()
-    #aggregate_experiments_results()
-    compute_features(1319)
+    aggregate_experiments_results()
