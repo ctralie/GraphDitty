@@ -55,8 +55,11 @@ def plotFusionResults(Ws, vs, alllabels, PlotExtents):
             plt.xticks(0.5 + np.arange(v.shape[1]), ["%i"%(i+1) for i in range(v.shape[1])])
         if name in alllabels:
             plt.subplot2grid((1, 9*len(Ws)), (0, i*9+8))
-            labels = alllabels[name]['labels']
-            plt.imshow(labels[:, None], cmap='tab20b', interpolation = 'nearest', aspect='auto', \
+            levels = [-1] # Look at only finest level for now
+            labels = np.zeros((W.shape[0], len(levels)))
+            for k, level in enumerate(levels):
+                labels[:, k] = alllabels[name][level]['labels']
+            plt.imshow(labels, cmap='tab20b', interpolation = 'nearest', aspect='auto', \
                 extent=(0, 1, PlotExtents[1], PlotExtents[0]))
             plt.title("Clusters")
     plt.tight_layout()

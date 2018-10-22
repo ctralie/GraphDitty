@@ -1,3 +1,7 @@
+"""
+SALAMI NOTES
+*1359 tracks total, 884 have two distinct annotators
+"""
 import matplotlib.pyplot as plt
 import seaborn as sns
 import scipy.io as sio
@@ -7,22 +11,33 @@ import mir_eval
 import jams
 import glob
 import os
+import sys
+import warnings
+import time
 from CSMSSMTools import getCSM, getCSMCosine
 from Laplacian import *
 from SimilarityFusion import getW, doSimilarityFusionWs
 from SongStructure import *
 from multiprocessing import Pool as PPool
 
-"""
-SALAMI NOTES
-*1359 tracks total, 884 have two distinct annotators
-"""
-
-#https://jams.readthedocs.io/en/stable/jams_structure.html
-#https://craffel.github.io/mir_eval/#mir_eval.hierarchy.lmeasure
-
+## Paths to dataset
 JAMS_DIR = 'salami-data-public-jams-multi'
 AUDIO_DIR = 'salami-data-public-audio'
+
+## Global fusion variables
+lapfn = getUnweightedLaplacianEigsDense
+specfn = lambda v, dim, time_interval: spectralClusterSequential(v, dim, time_interval, rownorm=False)
+sr=22050
+hop_length=512
+win_fac=10
+wins_per_block=20
+K=10
+reg_diag=1.0
+reg_neighbs=0.5
+niters=10
+neigs=10
+
+
 
 def jam_annos_to_lists(coarse, fine):
     """
@@ -86,30 +101,37 @@ def compute_features(num, do_plot=False):
         return
     filename = "%s/%i/audio.mp3"%(AUDIO_DIR, num)
     print("Doing %i..."%num)
-    
-    # Step 1: Initialize Feature/Fusion Parameters
-    lapfn = getUnweightedLaplacianEigsDense
-    specfn = lambda v, dim, time_interval: spectralClusterSequential(v, dim, time_interval, rownorm=False)
-    sr=22050
-    hop_length=512
-    win_fac=10
-    wins_per_block=20
-    K=10
-    reg_diag=1.0
-    reg_neighbs=0.5
-    niters=10
-    neigs=4
 
-    # Step 2: Compute feature-based similarity matrix and the matrix
+    # Step 1: Compute feature-based similarity matrix and the matrix
     # fusing all of them
     res = getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, reg_diag, reg_neighbs, niters, False, False)
     Ws, time_interval = res['Ws'], res['time_interval']
 
-    # Step 3: Compute Laplacian eigenvectors and perform spectral clustering
+    # Step 2: Compute Laplacian eigenvectors and perform spectral clustering
     # at different resolutions
     vs = {name:lapfn(Ws[name])[:, 1:neigs+1] for name in Ws}
-    alllabels = {name:specfn(vs[name], neigs, time_interval) for name in Ws}
+    tic = time.time()
+    alllabels = {name:[specfn(vs[name], k, time_interval) for k in range(2, neigs+1)] for name in Ws}
+    #print("Elapsed time spectral clustering: %.3g"%(time.time()-tic))
+    specintervals_hier = {name:[res['intervals_hier'] for res in alllabels[name]] for name in alllabels}
+    speclabels_hier = {name:[res['labels_hier'] for res in alllabels[name]] for name in alllabels}
 
+    ## Step 3: Compare to annotators and save results
+    jam = jams.load("%s/%i.jams"%(JAMS_DIR, num))    
+    ret = {name:[] for name in Ws}
+    for annidx in range(int(len(jam.annotations)/4)):
+        for name in alllabels:
+            intervals_hier, labels_hier = jam_annos_to_lists(jam.annotations[1+annidx*3], jam.annotations[2+annidx*3])
+            # Make sure the labels end at the same place (extend the spectral clustering label if necessary)
+            end = intervals_hier[-1][-1, 1]
+            for i in range(len(specintervals_hier[name])):
+                specintervals_hier[name][i][-1, 1] = end 
+            l_precision, l_recall, l_measure = mir_eval.hierarchy.lmeasure(intervals_hier, labels_hier, specintervals_hier[name], speclabels_hier[name])
+            ret[name] += [l_precision, l_recall, l_measure]
+            print("Annotator %i song %i %s: p = %.3g, r = %.3g, l = %.3g"%(annidx, num, name, l_precision, l_recall, l_measure))
+    sio.savemat(matfilename, ret)
+
+    ## Step 4: Plot SSM, eigenvectors, and clustering at the finest level
     if do_plot:
         PlotExtents = [0, time_interval*Ws['Fused'].shape[0]]
         fig = plotFusionResults(Ws, vs, alllabels, PlotExtents)
@@ -120,11 +142,14 @@ def compute_features(num, do_plot=False):
 
 
 def run_audio_experiments(NThreads = 12):
+    # Disable inconsistent hierarchy warnings
+    if not sys.warnoptions:
+        warnings.simplefilter("ignore")
+    parpool = PPool(NThreads)
     songnums = [int(s) for s in os.listdir(AUDIO_DIR)]
-    print(songnums)
-    pass
+    parpool.map(compute_features, (songnums))
+
 
 if __name__ == '__main__':
     #get_inter_anno_agreement()
-    #run_audio_experiments()
-    compute_features(2, True)
+    run_audio_experiments()
