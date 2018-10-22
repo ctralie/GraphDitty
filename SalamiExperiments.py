@@ -5,6 +5,7 @@ SALAMI NOTES
 import matplotlib.pyplot as plt
 import seaborn as sns
 import scipy.io as sio
+from scipy import stats
 import numpy as np
 import librosa
 import mir_eval
@@ -94,9 +95,10 @@ def get_inter_anno_agreement(NThreads = 12):
     plt.ylabel("Probability Density")
     plt.show()
 
-def compute_features(num, do_plot=False):
+def compute_features(num):
     matfilename = "%s/%i/results.mat"%(AUDIO_DIR, num)
-    if os.path.exists(matfilename):
+    jamsfilename = "%s/%i.jams"%(JAMS_DIR, num)
+    if os.path.exists(matfilename) or (not os.path.exists(jamsfilename)):
         print("Skipping %i"%num)
         return
     filename = "%s/%i/audio.mp3"%(AUDIO_DIR, num)
@@ -117,7 +119,7 @@ def compute_features(num, do_plot=False):
     speclabels_hier = {name:[res['labels_hier'] for res in alllabels[name]] for name in alllabels}
 
     ## Step 3: Compare to annotators and save results
-    jam = jams.load("%s/%i.jams"%(JAMS_DIR, num))    
+    jam = jams.load(jamsfilename)    
     ret = {name:[] for name in Ws}
     for annidx in range(int(len(jam.annotations)/4)):
         for name in alllabels:
@@ -132,16 +134,19 @@ def compute_features(num, do_plot=False):
     sio.savemat(matfilename, ret)
 
     ## Step 4: Plot SSM, eigenvectors, and clustering at the finest level
-    if do_plot:
-        PlotExtents = [0, time_interval*Ws['Fused'].shape[0]]
-        fig = plotFusionResults(Ws, vs, alllabels, PlotExtents)
-        figpath = "%s/%i/Fusion.png"%(AUDIO_DIR, num)
-        print("Saving to %s"%figpath)
-        plt.savefig(figpath, bbox_inches='tight')
-        plt.close(fig)
+    PlotExtents = [0, time_interval*Ws['Fused'].shape[0]]
+    fig = plotFusionResults(Ws, vs, alllabels, PlotExtents)
+    figpath = "%s/%i/Fusion.png"%(AUDIO_DIR, num)
+    print("Saving to %s"%figpath)
+    plt.savefig(figpath, bbox_inches='tight')
+    plt.close(fig)
 
 
 def run_audio_experiments(NThreads = 12):
+    """
+    Run all of the SALAMI feature computation and fusion in parallel
+    and save the results
+    """
     # Disable inconsistent hierarchy warnings
     if not sys.warnoptions:
         warnings.simplefilter("ignore")
@@ -149,7 +154,77 @@ def run_audio_experiments(NThreads = 12):
     songnums = [int(s) for s in os.listdir(AUDIO_DIR)]
     parpool.map(compute_features, (songnums))
 
+def aggregate_experiments_results():
+    """
+    Load all of the results from the SALAMI experiment and plot
+    the annotator agreements
+    """
+    # Step 1: Extract inter-annotator agreements
+    interanno = sio.loadmat("interanno.mat")["res"]
+    interanno = interanno[interanno[:, 0] > -1, :]
+
+    # Step 2: Extract feature-based agreements
+    names = ['MFCCs', 'Chromas', 'Fused']
+    prls = {name:np.zeros((0, 3)) for name in names} # Dictionary of precison, recall, and l-scores
+    idxs = [] #Indices of 
+
+    for num in [int(s) for s in os.listdir(AUDIO_DIR)]:
+        matfilename = '%s/%i/results.mat'%(AUDIO_DIR, num)
+        if os.path.exists(matfilename):
+            res = sio.loadmat(matfilename)
+            nanno = 0
+            for name in names:
+                nres = res[name]
+                nres = np.reshape(nres, (int(nres.size/3), 3))
+                prls[name] = np.concatenate((prls[name], nres), 0)
+                nanno = nres.shape[0]
+            idxs += [num]*nanno
+    idxs = np.array(idxs)
+
+    # Step 3: Plot distribution and KS-score of feature-based agreements
+    # versus inter-annotator agreements
+    plt.figure(figsize=(15, 5))
+    for i, plotname in enumerate(['Precision', 'Recall', 'L-Measure']):
+        plt.subplot(1, 3, i+1)
+        legend = ['interanno']
+        sns.kdeplot(interanno[:, i], shade=True)
+        for name in names:
+            prl = prls[name]
+            sns.kdeplot(prl[:, i], shade=True)
+            k = stats.ks_2samp(interanno[:, i], prl[:, i])[0]
+            legend.append('%s, K=%.3g'%(name, k))
+        plt.legend(legend)
+        plt.title("SPAM %s"%plotname)
+        plt.xlabel(plotname)
+        plt.ylabel("Probability Density")
+        plt.xlim([0, 1])
+    plt.savefig("Results.svg", bbox_inches='tight')
+
+    # Step 4: Plot distribution of improvements with fusion
+    names = ['MFCCs', 'Chromas']
+    plt.figure(figsize=(15, 5))
+    for i, plotname in enumerate(['Precision', 'Recall', 'L-Measure']):
+        plt.subplot(1, 3, i+1)
+        for name in names:
+            prl = prls[name]
+            improvements = prls['Fused'][:, i]/prl[:, i]
+            order = np.argsort(improvements)[0:10]
+            s = ""
+            for o in order:
+                s += "\n%i: %.3g"%(idxs[o], improvements[o])
+            print("Worst 10 %s %s: %s"%(name, plotname, s))
+            print(improvements)
+            #sns.kdeplot(improvements, shade=True)
+        plt.legend(names)
+        plt.title("SPAM %s Fusion Improvement"%plotname)
+        plt.xlabel(plotname)
+        plt.ylabel("Probability Density")
+        #plt.gca().set_xscale("log")
+    plt.savefig("Improvements.svg", bbox_inches='tight')
+
 
 if __name__ == '__main__':
     #get_inter_anno_agreement()
-    run_audio_experiments()
+    #run_audio_experiments()
+    #aggregate_experiments_results()
+    compute_features(1319)
