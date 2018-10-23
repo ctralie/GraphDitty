@@ -78,8 +78,7 @@ def get_graph_obj(W, K, res = 400):
     Parameters
     ----------
     W: ndarray(N, N)
-        The N x N similarity matrix, where each row is time_interval
-        apart from its adjacent rows
+        The N x N time-ordered similarity matrix
     K: int
         Number of nearest neighbors to use in graph representation
     res: int
@@ -113,7 +112,7 @@ def get_graph_obj(W, K, res = 400):
     ret["fac"] = fac
     return ret
 
-def saveResultsJSON(filename, time_interval, Ws, K, neigs, jsonfilename, diffusion_znormalize):
+def saveResultsJSON(filename, times, Ws, K, neigs, jsonfilename, diffusion_znormalize):
     """
     Save a JSON file holding the audio and structure information, which can 
     be parsed by SongStructureGUI.html.  Audio and images are stored as
@@ -123,11 +122,10 @@ def saveResultsJSON(filename, time_interval, Ws, K, neigs, jsonfilename, diffusi
     ----------
     filename: string
         Path to audio
-    time_interval: float
-        Time interval between adjacent windows
+    times: ndarray(N)
+        A list of times corresponding to each row in Ws
     Ws: Dictionary of (str, ndarray(N, N))
-        A dictionary of N x N similarity matrices for different feature types,
-        where each row is time_interval apart from its adjacent rows
+        A dictionary of N x N similarity matrices for different feature types
     K: int
         Number of nearest neighbors to use in graph representation
     neigs: int
@@ -137,7 +135,7 @@ def saveResultsJSON(filename, time_interval, Ws, K, neigs, jsonfilename, diffusi
     diffusion_znormalize: boolean
         Whether to Z-normalize diffusion maps to spread things out more evenly
     """
-    Results = {'songname':filename, 'time_interval':time_interval}
+    Results = {'songname':filename, 'times':times.tolist()}
     print("Saving results...")
     #Add music as base64 files
     _, ext = os.path.splitext(filename)

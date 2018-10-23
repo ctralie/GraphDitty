@@ -12,7 +12,7 @@ from CSMSSMTools import getCSM, getCSMCosine
 from SimilarityFusion import doSimilarityFusion
 from SongStructureGUI import saveResultsJSON
 
-def plotFusionResults(Ws, vs, alllabels, PlotExtents):
+def plotFusionResults(Ws, vs, alllabels, times):
     """
     Show a plot of different adjacency matrices and their associated eigenvectors
     and cluster labels, if applicable
@@ -26,8 +26,8 @@ def plotFusionResults(Ws, vs, alllabels, PlotExtents):
     alllabels: Dictionary of string:ndarray(N)
         Labels from spectral clustering for different adjacency matrix types.
         If there is not a key for a particular adjacency matrix type, it isn't plotted
-    PlotExtents: [float, float]
-        The begin and end time spanned by each adjacency matrix
+    times: ndarray(N)
+        A list of times corresponding to each row in Ws
     
     Returns
     -------
@@ -40,16 +40,16 @@ def plotFusionResults(Ws, vs, alllabels, PlotExtents):
         WShow = np.array(W)
         np.fill_diagonal(WShow, 0)
         plt.subplot2grid((1, 9*len(Ws)), (0, i*9), colspan=7)
-        plt.imshow(np.log(5e-2+WShow), interpolation = 'nearest', cmap = 'afmhot', \
-        extent = (PlotExtents[0], PlotExtents[1], PlotExtents[1], PlotExtents[0]))
+        plt.pcolormesh(times, times, np.log(5e-2+WShow), cmap = 'afmhot')
+        plt.gca().invert_yaxis()
         plt.title("%s Similarity Matrix"%name)
         plt.xlabel("Time (sec)")
         plt.ylabel("Time (sec)")
         if name in vs:
             v = vs[name]
             plt.subplot2grid((1, 9*len(Ws)), (0, i*9+7))
-            plt.imshow(v, cmap='afmhot', interpolation = 'nearest', aspect='auto', \
-                extent=(0, v.shape[1], PlotExtents[1], PlotExtents[0]))
+            plt.pcolormesh(np.arange(v.shape[1]+1), times, v, cmap='afmhot')
+            plt.gca().invert_yaxis()
             plt.title("Laplacian")
             plt.xlabel("Eigenvector Num")
             plt.xticks(0.5 + np.arange(v.shape[1]), ["%i"%(i+1) for i in range(v.shape[1])])
@@ -59,12 +59,11 @@ def plotFusionResults(Ws, vs, alllabels, PlotExtents):
             labels = np.zeros((W.shape[0], len(levels)))
             for k, level in enumerate(levels):
                 labels[:, k] = alllabels[name][level]['labels']
-            plt.imshow(labels, cmap='tab20b', interpolation = 'nearest', aspect='auto', \
-                extent=(0, 1, PlotExtents[1], PlotExtents[0]))
+            plt.pcolormesh(np.arange(labels.shape[1]+1), times, labels, cmap = 'tab20b')
+            plt.gca().invert_yaxis()
             plt.title("Clusters")
     plt.tight_layout()
     return fig
-
 
 def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, reg_diag, reg_neighbs, niters, do_animation, plot_result):
     """
@@ -80,7 +79,7 @@ def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, reg
         Hop size between frames in chroma and mfcc
     win_fac: int
         Number of frames to average (i.e. factor by which to downsample)
-        If -1, then do beat tracking
+        If negative, then do beat tracking, and subdivide by |win_fac| times within each beat
     wins_per_block: int
         Number of aggregated windows per sliding window block
     K: int
@@ -100,22 +99,35 @@ def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, reg
     -------
     {'Ws': An dictionary of weighted adjacency matrices for individual features
                     and the fused adjacency matrix, 
-            'time_interval': Time in seconds between each window} 
+            'times': Time in seconds of each row in the similarity matrices} 
     """
     print("Loading %s..."%filename)
     y, sr = librosa.load(filename, sr=sr)
+    
+    if win_fac > 0:
+        # Compute features in intervals evenly spaced by the hop size
+        # but average within "win_fac" intervals of hop_length
+        nHops = int((y.size-hop_length*win_fac*wins_per_block)/hop_length)
+        intervals = np.arange(0, nHops, win_fac)
+    else:
+        # Compute features in intervals which are subdivided beats
+        # by a factor of |win_fac|
+        C = np.abs(librosa.cqt(y=y, sr=sr))
+        _, beats = librosa.beat.beat_track(y=y, sr=sr, trim=False, start_bpm=240)
+        intervals = librosa.util.fix_frames(beats, x_max=C.shape[1])
+        intervals = librosa.segment.subsegment(C, intervals, n_segments=abs(win_fac))
+
+
     chroma = librosa.feature.chroma_stft(y=y, sr=sr, hop_length=hop_length)
     S = librosa.feature.melspectrogram(y, sr=sr, n_mels=128, hop_length=hop_length)
     log_S = librosa.power_to_db(S, ref=np.max)
     mfcc = librosa.feature.mfcc(S=log_S, n_mfcc=20)
     
-    #Compute features in intervals evenly spaced by the hop size
-    #but average within "win_fac" intervals of hop_length
-    nHops = int((y.size-hop_length*win_fac*wins_per_block)/hop_length)
-    intervals = np.arange(0, nHops, win_fac)
     intervals = librosa.util.fix_frames(intervals, x_min=0, x_max=min(mfcc.shape[1], chroma.shape[1]))
     chroma = librosa.util.sync(chroma, intervals)
     mfcc = librosa.util.sync(mfcc, intervals)
+    times = intervals*float(hop_length)/float(sr)
+
 
     n_frames = min(chroma.shape[1], mfcc.shape[1])
     chroma = chroma[:, :n_frames]
@@ -130,9 +142,6 @@ def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, reg
     #Run similarity network fusion
     FeatureNames = ['MFCCs', 'Chromas']
     Ds = [DMFCC, DChroma]
-    time_interval = hop_length*win_fac/float(sr)
-    print("Interval = %.3g Seconds, Block = %.3g Seconds"%(time_interval, time_interval*wins_per_block))
-    PlotExtents = [0, time_interval*DMFCC.shape[0]]
     # Edge case: zeropad if it's too small
     for i, Di in enumerate(Ds):
         if Di.shape[0] < 2*K:
@@ -143,15 +152,15 @@ def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, reg
     (Ws, WFused) = doSimilarityFusion(Ds, K=K, niters=niters, \
         reg_diag=reg_diag, reg_neighbs=reg_neighbs, \
         do_animation=do_animation, PlotNames=FeatureNames, \
-        PlotExtents=PlotExtents) 
+        PlotExtents=[times[0], times[-1]]) 
     WsDict = {}
     for n, W in zip(FeatureNames, Ws):
         WsDict[n] = W
     WsDict['Fused'] = WFused
     if plot_result:
-        plotFusionResults(WsDict, {}, {}, PlotExtents)
+        plotFusionResults(WsDict, {}, {}, times)
         plt.show()
-    return {'Ws':WsDict, 'time_interval':time_interval}
+    return {'Ws':WsDict, 'times':times}
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -160,7 +169,7 @@ if __name__ == '__main__':
     parser.add_argument('--plot_result', type=int, default=1, help='Plot the result of fusion')
     parser.add_argument('--sr', type=int, default=22050, help='Sample rate to use')
     parser.add_argument('--hop_length', type=int, default=512, help="Hop Size in samples")
-    parser.add_argument('--win_fac', type=int, default=10, help="Number of windows to average in a frame")
+    parser.add_argument('--win_fac', type=int, default=10, help="Number of windows to average in a frame.  If negative, then do beat tracking, and subdivide by |win_fac| times within each beat")
     parser.add_argument('--wins_per_block', type=int, default=20, help="Number of frames to stack in sliding window for every feature")
     parser.add_argument('--K', type=int, default=10, help="Number of nearest neighbors in similarity network fusion")
     parser.add_argument('--reg_diag', type=float, default=1.0, help="Regularization for self-similarity promotion")
@@ -178,4 +187,4 @@ if __name__ == '__main__':
         K=opt.K, reg_diag=opt.reg_diag, reg_neighbs=opt.reg_neighbs, niters=opt.niters, \
         do_animation=opt.do_animation, plot_result=opt.plot_result)
     sio.savemat(opt.matfilename, res)
-    saveResultsJSON(opt.filename, res['time_interval'], res['Ws'], opt.K, opt.neigs, opt.jsonfilename, opt.diffusion_znormalize)
+    saveResultsJSON(opt.filename, res['times'], res['Ws'], opt.K, opt.neigs, opt.jsonfilename, opt.diffusion_znormalize)

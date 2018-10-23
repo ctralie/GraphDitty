@@ -428,7 +428,7 @@ function DiffusionGLCanvas(audio_obj) {
          */
         var playIdx = this.N;
         if (!making_GIF) {
-            var playIdx = this.audio_obj.audio_widget.currentTime / this.audio_obj.time_interval;
+            var playIdx = this.audio_obj.getClosestIdx();
             playIdx = Math.round(playIdx);
             if (playIdx > this.N-1) {
                 playIdx = this.N-1;

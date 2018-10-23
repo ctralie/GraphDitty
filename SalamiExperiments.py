@@ -27,11 +27,11 @@ AUDIO_DIR = 'salami-data-public-audio'
 
 ## Global fusion variables
 lapfn = getUnweightedLaplacianEigsDense
-specfn = lambda v, dim, time_interval: spectralClusterSequential(v, dim, time_interval, rownorm=False)
+specfn = lambda v, dim, times: spectralClusterSequential(v, dim, times, rownorm=False)
 sr=22050
 hop_length=512
-win_fac=10
-wins_per_block=20
+win_fac=-2
+wins_per_block=40
 K=10
 reg_diag=1.0
 reg_neighbs=0.5
@@ -95,10 +95,10 @@ def get_inter_anno_agreement(NThreads = 12):
     plt.ylabel("Probability Density")
     plt.show()
 
-def compute_features(num):
+def compute_features(num, recompute=False):
     matfilename = "%s/%i/results.mat"%(AUDIO_DIR, num)
     jamsfilename = "%s/%i.jams"%(JAMS_DIR, num)
-    if os.path.exists(matfilename) or (not os.path.exists(jamsfilename)):
+    if (not recompute) and (os.path.exists(matfilename) or (not os.path.exists(jamsfilename))):
         print("Skipping %i"%num)
         return
     filename = "%s/%i/audio.mp3"%(AUDIO_DIR, num)
@@ -107,13 +107,12 @@ def compute_features(num):
     # Step 1: Compute feature-based similarity matrix and the matrix
     # fusing all of them
     res = getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, reg_diag, reg_neighbs, niters, False, False)
-    Ws, time_interval = res['Ws'], res['time_interval']
+    Ws, times = res['Ws'], res['times']
 
     # Step 2: Compute Laplacian eigenvectors and perform spectral clustering
     # at different resolutions
     vs = {name:lapfn(Ws[name])[:, 1:neigs+1] for name in Ws}
-    tic = time.time()
-    alllabels = {name:[specfn(vs[name], k, time_interval) for k in range(2, neigs+1)] for name in Ws}
+    alllabels = {name:[specfn(vs[name], k, times) for k in range(2, neigs+1)] for name in Ws}
     #print("Elapsed time spectral clustering: %.3g"%(time.time()-tic))
     specintervals_hier = {name:[res['intervals_hier'] for res in alllabels[name]] for name in alllabels}
     speclabels_hier = {name:[res['labels_hier'] for res in alllabels[name]] for name in alllabels}
@@ -134,8 +133,7 @@ def compute_features(num):
     sio.savemat(matfilename, ret)
 
     ## Step 4: Plot SSM, eigenvectors, and clustering at the finest level
-    PlotExtents = [0, time_interval*Ws['Fused'].shape[0]]
-    fig = plotFusionResults(Ws, vs, alllabels, PlotExtents)
+    fig = plotFusionResults(Ws, vs, alllabels, times)
     figpath = "%s/%i/Fusion.png"%(AUDIO_DIR, num)
     print("Saving to %s"%figpath)
     plt.savefig(figpath, bbox_inches='tight')
@@ -150,9 +148,14 @@ def run_audio_experiments(NThreads = 12):
     # Disable inconsistent hierarchy warnings
     if not sys.warnoptions:
         warnings.simplefilter("ignore")
-    parpool = PPool(NThreads)
     songnums = [int(s) for s in os.listdir(AUDIO_DIR)]
-    parpool.map(compute_features, (songnums))
+    songnums.remove(878)
+    if NThreads > -1:
+        parpool = PPool(NThreads)
+        parpool.map(compute_features, (songnums))
+    else:
+        for num in songnums:
+            compute_features(num)
 
 def aggregate_experiments_results():
     """
@@ -228,5 +231,6 @@ def aggregate_experiments_results():
 
 if __name__ == '__main__':
     #get_inter_anno_agreement()
-    #run_audio_experiments()
-    aggregate_experiments_results()
+    run_audio_experiments(NThreads=4)
+    #aggregate_experiments_results()
+    #compute_features(2, True)

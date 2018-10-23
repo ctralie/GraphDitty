@@ -75,7 +75,7 @@ def getRandomWalkLaplacianEigsDense(W):
         return np.zeros_like(W)
     return v
 
-def spectralClusterSequential(v, dim, time_interval, rownorm=False):
+def spectralClusterSequential(v, dim, times, rownorm=False):
     """
     Given Laplacian eigenvectors associated with a time series, perform 
     spectral clustering, and return a compressed representation of
@@ -86,8 +86,8 @@ def spectralClusterSequential(v, dim, time_interval, rownorm=False):
         A matrix of eigenvectors, excluding the zeroeth
     dim: int
         Dimension of spectral clustering, <= k
-    time_interval: float
-        Length of time in seconds between windows
+    times: ndarray(N)
+        Time in seconds of each row of the eigenvector matrix
     rownorm: boolean
         Whether to normalize each row (if using symmetric Laplacian)
 
@@ -111,7 +111,9 @@ def spectralClusterSequential(v, dim, time_interval, rownorm=False):
     splits = np.concatenate(([0], splits, [labels.size]))
     groups = np.split(labels, splits)[1:-1]
     intervals_hier = np.zeros((len(groups), 2))
-    intervals_hier[:, 0] = time_interval*splits[0:-1]
-    intervals_hier[:, 1] = time_interval*splits[1::]
+    timesext = np.array(times.tolist() + [times[-1]])
+    intervals_hier[:, 0] = timesext[splits[0:-1]]
+    intervals_hier[:, 1] = timesext[splits[1::]]
+    x = np.zeros((intervals_hier.shape[0], 3))
     labels_hier = ['%i'%g[0] for g in groups]
     return {'labels':labels, 'intervals_hier':intervals_hier, 'labels_hier':labels_hier}

@@ -5,9 +5,33 @@
 
 
 /** Main audio object */
-var audio_obj = {'audio_widget':document.getElementById("audio_widget"), 
-                            'time_interval':0, 'dim':0};
+function AudioObject() {
+    this.audio_widget = document.getElementById("audio_widget");
+    this.times = [0];
+    this.dim = 0;
+    
+    /**
+     * Return the index of the row with the closest time to
+     * the currently playing time in the audio widget
+     */
+    this.getClosestIdx = function() {
+        //TODO: Make a binary search
+        var time = audio_widget.currentTime;
+        var t = 0;
+		var mindiff = Math.abs(time - this.times[0]);
+		for (var i = 1; i < this.times.length; i++) {
+		    var diff = Math.abs(this.times[i] - time);
+		    if (diff < mindiff) {
+		        mindiff = diff;
+		        t = i;
+		    }
+		}
+		return t;
+    }
+}
+var audio_obj = new AudioObject();
 audio_obj.audio_widget.style.width = 800;
+
 /** Objects for tab data {name, canvas object, active} */
 var tabdata = [{name:"Self-Similarity", canvas:new SimilarityCanvas(audio_obj), active:false}, 
                {name:"Force Graph", canvas:new ForceCanvas(audio_obj), active:false},
@@ -76,7 +100,7 @@ for (var i = 0; i < tabdata.length; i++) {
 function setupSong(params) {
     //Setup audio buffers
     audio_obj.audio_widget.src = params.audio;
-    audio_obj.time_interval = params.time_interval;
+    audio_obj.times = params.times;
     audio_obj.dim = params.dim;
     songnameTxt.innerHTML = params.songname;
     for (var i = 0; i < tabdata.length; i++) {
