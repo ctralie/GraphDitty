@@ -118,13 +118,18 @@ def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, reg
         intervals = librosa.segment.subsegment(C, intervals, n_segments=abs(win_fac))
 
 
-    chroma = librosa.feature.chroma_stft(y=y, sr=sr, hop_length=hop_length)
+    # chroma = librosa.feature.chroma_stft(y=y, sr=sr, hop_length=hop_length)
+    # CQT chroma with 3x oversampling in pitch
+    chroma = librosa.feature.chroma_cqt(y=y, sr=sr, hop_length=hop_length, bins_per_octave=12*3)
     S = librosa.feature.melspectrogram(y, sr=sr, n_mels=128, hop_length=hop_length)
     log_S = librosa.power_to_db(S, ref=np.max)
     mfcc = librosa.feature.mfcc(S=log_S, n_mfcc=20)
     
     intervals = librosa.util.fix_frames(intervals, x_min=0, x_max=min(mfcc.shape[1], chroma.shape[1]))
-    chroma = librosa.util.sync(chroma, intervals)
+
+    # chroma = librosa.util.sync(chroma, intervals)
+    # median-aggregate chroma to suppress transients and passing tones
+    chroma = librosa.util.sync(chroma, intervals, aggregate=np.median)
     mfcc = librosa.util.sync(mfcc, intervals)
     times = intervals*float(hop_length)/float(sr)
 
