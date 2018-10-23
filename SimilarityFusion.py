@@ -29,7 +29,9 @@ def getW(D, K, Mu = 0.5):
     #by looking at k nearest neighbors, not including point itself
     Eps = MeanDist[:, None] + MeanDist[None, :] + DSym
     Eps = Eps/3
-    W = np.exp(-DSym**2/(2*(Mu*Eps)**2))
+    Denom = (2*(Mu*Eps)**2)
+    Denom[Denom == 0] = 1
+    W = np.exp(-DSym**2/Denom)
     return W
 
 def getWCSM(CSMAB, k1, k2, Mu = 0.5):
@@ -176,7 +178,7 @@ def doSimilarityFusionWs(Ws, K = 5, niters = 20, reg_diag = 1, reg_neighbs = 0.5
     if do_animation:
         res = 5
         plt.figure(figsize=(res*N, res*2))
-        from Laplacian import getLaplacianEigsDense
+        from Laplacian import getUnweightedLaplacianEigsDense
     for it in range(niters):
         ticiter = time.time()
         if do_animation:
@@ -195,8 +197,7 @@ def doSimilarityFusionWs(Ws, K = 5, niters = 20, reg_diag = 1, reg_neighbs = 0.5
                 #Compute Laplacian eigenvectors
                 """
                 NEigs = 20
-                (w, v, L) = getLaplacianEigsDense(Pts[i], NEigs)
-                print(w)
+                v = getUnweightedLaplacianEigsDense(Pts[i], NEigs)
                 plt.subplot(2, N, N+i+1)
                 if PlotExtents:
                     plt.imshow(v, cmap = 'afmhot', aspect = 'auto', interpolation = 'none', \
@@ -234,7 +235,8 @@ def doSimilarityFusionWs(Ws, K = 5, niters = 20, reg_diag = 1, reg_neighbs = 0.5
                 nextPts[i][np.abs(I - J) == 1] += reg_neighbs
 
         Pts = nextPts
-        print("Elapsed Time Iter %i of %i: %g"%(it+1, niters, time.time()-ticiter))
+        if verboseTimes:
+            print("Elapsed Time Iter %i of %i: %g"%(it+1, niters, time.time()-ticiter))
     if verboseTimes:
         print("Total Time multiplying: %g"%np.sum(np.array(AllTimes)))
     FusedScores = np.zeros(Pts[0].shape)

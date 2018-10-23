@@ -66,7 +66,10 @@ function ForceCanvas(audio_obj) {
 	 * @param {object} d: A handle to the node that's been clicked 
 	 */
 	this.clicknode_panaudio = function(d) {
-		var t = this.audio_obj.time_interval*this.fac*d.id;
+		console.log("this.fac = " + this.fac);
+		console.log("d.id = " + d.id);
+		var t = this.audio_obj.times[this.fac*d.id];
+		console.log("t = " + t);
 		this.audio_obj.audio_widget.currentTime = t;
 		this.updateCanvas();
 	};
@@ -154,9 +157,8 @@ function ForceCanvas(audio_obj) {
 	 * to the current play time in the audio
 	 */
 	this.updateCanvas = function() {
-		if (this.audio_obj.time_interval > 0) {
-			var idx = this.audio_obj.audio_widget.currentTime / this.audio_obj.time_interval;
-			idx = Math.round(idx/this.fac);
+		if (this.audio_obj.times.length > 1) {
+			var idx = Math.round(this.audio_obj.getClosestIdx()/this.fac);
 			this.nodes.attr("r", 
 				function(d, i) {
 					if (i == idx) {

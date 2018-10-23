@@ -9,6 +9,8 @@ import json
 import base64
 from SimilarityFusion import *
 from DiffusionMaps import *
+from Laplacian import *
+import time
 
 def imresize(D, dims, kind='cubic'):
     """
@@ -76,8 +78,7 @@ def get_graph_obj(W, K, res = 400):
     Parameters
     ----------
     W: ndarray(N, N)
-        The N x N similarity matrix, where each row is time_interval
-        apart from its adjacent rows
+        The N x N time-ordered similarity matrix
     K: int
         Number of nearest neighbors to use in graph representation
     res: int
@@ -111,7 +112,7 @@ def get_graph_obj(W, K, res = 400):
     ret["fac"] = fac
     return ret
 
-def saveResultsJSON(filename, time_interval, W, K, v, jsonfilename, diffusion_znormalize):
+def saveResultsJSON(filename, times, Ws, K, neigs, jsonfilename, diffusion_znormalize):
     """
     Save a JSON file holding the audio and structure information, which can 
     be parsed by SongStructureGUI.html.  Audio and images are stored as
@@ -121,30 +122,36 @@ def saveResultsJSON(filename, time_interval, W, K, v, jsonfilename, diffusion_zn
     ----------
     filename: string
         Path to audio
-    time_interval: float
-        Time interval between adjacent windows
-    W: ndarray(N, N)
-        The N x N similarity matrix, where each row is time_interval
-        apart from its adjacent rows
+    times: ndarray(N)
+        A list of times corresponding to each row in Ws
+    Ws: Dictionary of (str, ndarray(N, N))
+        A dictionary of N x N similarity matrices for different feature types
     K: int
         Number of nearest neighbors to use in graph representation
-    v: ndarray(N, k)
-        Eigenvectors of weighted Laplacian
+    neigs: int
+        Number of eigenvectors to compute in graph Laplacian
     jsonfilename: string
         File to which to save the .json file
     diffusion_znormalize: boolean
         Whether to Z-normalize diffusion maps to spread things out more evenly
     """
-    Results = {'songname':filename, 'time_interval':time_interval}
+    Results = {'songname':filename, 'times':times.tolist()}
     print("Saving results...")
     #Add music as base64 files
-    path, ext = os.path.splitext(filename)
+    _, ext = os.path.splitext(filename)
     Results['audio'] = "data:audio/%s;base64, "%ext[1::] + getBase64File(filename)
+    W = Ws['Fused']
     WOut = np.array(W)
     np.fill_diagonal(WOut, 0)
     Results['W'] = getBase64PNGImage(WOut, 'afmhot', 5e-2)
     Results['dim'] = W.shape[0]
     
+    # Compute Laplacian eigenvectors
+    tic = time.time()
+    v = getRandomWalkLaplacianEigsDense(W)
+    v = v[:, 1:neigs+1]
+    print("Elapsed Time Laplacian: %.3g"%(time.time()-tic))
+
     # Resize the eigenvectors so they're easier to see
     fac = 10
     vout = np.zeros((v.shape[1]*fac, v.shape[0]))

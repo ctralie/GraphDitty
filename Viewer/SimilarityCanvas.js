@@ -99,7 +99,7 @@ function SimilarityCanvas(audio_obj) {
 		else {
 			offsetidx = offset2idx;
 		}
-		this.audio_obj.audio_widget.currentTime = this.audio_obj.time_interval*offsetidx;
+		this.audio_obj.audio_widget.currentTime = this.audio_obj.times[offsetidx];
 		this.repaint();
 		return false;
 	};
@@ -111,7 +111,7 @@ function SimilarityCanvas(audio_obj) {
 	 */
 	this.releaseClickEig = function(evt) {
 		evt.preventDefault();
-		this.audio_obj.audio_widget.currentTime = evt.offsetX*this.audio_obj.time_interval;
+		this.audio_obj.audio_widget.currentTime = this.audio_obj.times[evt.offsetX];
 		this.repaint();
 		return false;
 	};
@@ -129,12 +129,10 @@ function SimilarityCanvas(audio_obj) {
 	 * with lines superimposed to show where the audio is
 	 */
 	this.updateCanvas = function() {
-		if (this.audio_obj.time_interval > 0) {
-			var t = this.audio_obj.audio_widget.currentTime / this.audio_obj.time_interval;
-			this.ssmlinehoriz.attr('y1', t).attr('y2', t);
-			this.ssmlinevert.attr('x1', t).attr('x2', t);
-			this.eiglinevert.attr('x1', t).attr('x2', t);
-		}
+		var t = this.audio_obj.getClosestIdx();
+		this.ssmlinehoriz.attr('y1', t).attr('y2', t);
+		this.ssmlinevert.attr('x1', t).attr('x2', t);
+		this.eiglinevert.attr('x1', t).attr('x2', t);
 	};
 	
 	/**
