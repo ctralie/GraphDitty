@@ -14,4 +14,5 @@ if __name__ == '__main__':
     if num in songnums:
         if not sys.warnoptions:
             warnings.simplefilter("ignore")
+        print("Doing %i"%num)
         compute_features(num)

@@ -6,11 +6,17 @@ doing similarity fusion on those features to make a weighted adjacency matrix
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.io as sio
+import os
 import librosa
+import librosa.display
 import argparse
 from CSMSSMTools import getCSM, getCSMCosine
 from SimilarityFusion import doSimilarityFusion
 from SongStructureGUI import saveResultsJSON
+import subprocess
+
+MANUAL_AUDIO_LOAD = False
+FFMPEG_BINARY = "ffmpeg"
 
 def plotFusionResults(Ws, vs, alllabels, times):
     """
@@ -83,7 +89,8 @@ def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, reg
     wins_per_block: int
         Number of aggregated windows per sliding window block
     K: int
-        Number of nearest neighbors in SNF
+        Number of nearest neighbors in SNF.  If -1, then autotuned to sqrt(N)
+        for an NxN similarity matrix
     reg_diag: float 
         Regularization for self-similarity promotion
     reg_neighbs: float
@@ -99,11 +106,18 @@ def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, reg
     -------
     {'Ws': An dictionary of weighted adjacency matrices for individual features
                     and the fused adjacency matrix, 
-            'times': Time in seconds of each row in the similarity matrices} 
+            'times': Time in seconds of each row in the similarity matrices,
+            'K': The number of nearest neighbors actually used} 
     """
     ## Step 1: Load audio
     print("Loading %s..."%filename)
-    y, sr = librosa.load(filename, sr=sr)
+    if MANUAL_AUDIO_LOAD:
+        subprocess.call([FFMPEG_BINARY, "-i", filename, "-ar", "%i"%sr, "-ac", "1", "%s.wav"%filename])
+        sr, y = sio.wavfile.read("%s.wav"%filename)
+        y = y/2.0**15
+        os.remove("%s.wav"%filename)
+    else:
+        y, sr = librosa.load(filename, sr=sr)
     
     ## Step 2: Figure out intervals to which to sync features
     if win_fac > 0:
@@ -119,7 +133,6 @@ def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, reg
         intervals = librosa.util.fix_frames(beats, x_max=C.shape[1])
         intervals = librosa.segment.subsegment(C, intervals, n_segments=abs(win_fac))
 
-
     ## Step 3: Compute features
     # 1) CQT chroma with 3x oversampling in pitch
     chroma = librosa.feature.chroma_cqt(y=y, sr=sr, hop_length=hop_length, bins_per_octave=12*3)
@@ -134,39 +147,47 @@ def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, reg
     mfcc = coeffs[:, None]*mfcc
 
     # 3) Tempograms
-    
+    oenv = librosa.onset.onset_strength(y=y, sr=sr, hop_length=hop_length)
+    tempogram = librosa.feature.tempogram(onset_envelope=oenv, sr=sr, hop_length=hop_length)
 
     
     ## Step 4: Synchronize features to intervals
-    n_frames = min(chroma.shape[1], mfcc.shape[1])
+    n_frames = min(min(chroma.shape[1], mfcc.shape[1]), tempogram.shape[1])
     # median-aggregate chroma to suppress transients and passing tones
     intervals = librosa.util.fix_frames(intervals, x_min=0, x_max=n_frames)
     chroma = librosa.util.sync(chroma, intervals, aggregate=np.median)
     mfcc = librosa.util.sync(mfcc, intervals)
+    tempogram = librosa.util.sync(tempogram, intervals)
     times = intervals*float(hop_length)/float(sr)
 
 
     
     chroma = chroma[:, :n_frames]
     mfcc = mfcc[:, :n_frames]
+    tempogram = tempogram[:, :n_frames]
 
     #Do a delay embedding and compute SSMs
     XChroma = librosa.feature.stack_memory(chroma, n_steps=wins_per_block, mode='edge').T
     XMFCC = librosa.feature.stack_memory(mfcc, n_steps=wins_per_block, mode='edge').T
+    XTempogram = librosa.feature.stack_memory(tempogram, n_steps=wins_per_block, mode='edge').T
     DChroma = getCSMCosine(XChroma, XChroma) #Cosine distance
     DMFCC = getCSM(XMFCC, XMFCC) #Euclidean distance
+    DTempogram = getCSM(XTempogram, XTempogram)
 
     #Run similarity network fusion
-    FeatureNames = ['MFCCs', 'Chromas']
-    Ds = [DMFCC, DChroma]
+    FeatureNames = ['MFCCs', 'Chromas', 'Tempogram']
+    Ds = [DMFCC, DChroma, DTempogram]
     # Edge case: zeropad if it's too small
     for i, Di in enumerate(Ds):
         if Di.shape[0] < 2*K:
             D = np.zeros((2*K, 2*K))
             D[0:Di.shape[0], 0:Di.shape[1]] = Di
             Ds[i] = D
-
-    (Ws, WFused) = doSimilarityFusion(Ds, K=K, niters=niters, \
+    
+    pK = K
+    if K == -1:
+        pK = int(np.round(np.sqrt(Ds[0].shape[0])))
+    (Ws, WFused) = doSimilarityFusion(Ds, K=pK, niters=niters, \
         reg_diag=reg_diag, reg_neighbs=reg_neighbs, \
         do_animation=do_animation, PlotNames=FeatureNames, \
         PlotExtents=[times[0], times[-1]]) 
@@ -177,7 +198,7 @@ def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, reg
     if plot_result:
         plotFusionResults(WsDict, {}, {}, times)
         plt.savefig("%s_Plot.png"%filename, bbox_inches='tight')
-    return {'Ws':WsDict, 'times':times}
+    return {'Ws':WsDict, 'times':times, 'K':pK}
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -188,7 +209,7 @@ if __name__ == '__main__':
     parser.add_argument('--hop_length', type=int, default=512, help="Hop Size in samples")
     parser.add_argument('--win_fac', type=int, default=10, help="Number of windows to average in a frame.  If negative, then do beat tracking, and subdivide by |win_fac| times within each beat")
     parser.add_argument('--wins_per_block', type=int, default=20, help="Number of frames to stack in sliding window for every feature")
-    parser.add_argument('--K', type=int, default=10, help="Number of nearest neighbors in similarity network fusion")
+    parser.add_argument('--K', type=int, default=10, help="Number of nearest neighbors in similarity network fusion.  If -1, then autotune to sqrt(N) for an NxN similarity matrix")
     parser.add_argument('--reg_diag', type=float, default=1.0, help="Regularization for self-similarity promotion")
     parser.add_argument('--reg_neighbs', type=float, default=0.5, help="Regularization for direct neighbor similarity promotion")
     parser.add_argument('--niters', type=int, default=10, help="Number of iterations in similarity network fusion")
@@ -204,4 +225,4 @@ if __name__ == '__main__':
         K=opt.K, reg_diag=opt.reg_diag, reg_neighbs=opt.reg_neighbs, niters=opt.niters, \
         do_animation=opt.do_animation, plot_result=opt.plot_result)
     sio.savemat(opt.matfilename, res)
-    saveResultsJSON(opt.filename, res['times'], res['Ws'], opt.K, opt.neigs, opt.jsonfilename, opt.diffusion_znormalize)
+    saveResultsJSON(opt.filename, res['times'], res['Ws'], res['K'], opt.neigs, opt.jsonfilename, opt.diffusion_znormalize)
