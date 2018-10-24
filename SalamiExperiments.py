@@ -167,7 +167,7 @@ def aggregate_experiments_results():
     interanno = interanno[interanno[:, 0] > -1, :]
 
     # Step 2: Extract feature-based agreements
-    names = ['MFCCs', 'Chromas', 'Fused']
+    names = ['MFCCs', 'Chromas', 'Tempogram', 'Crema', 'Fused']
     prls = {name:np.zeros((0, 3)) for name in names} # Dictionary of precison, recall, and l-scores
     idxs = [] #Indices of 
 
@@ -204,9 +204,13 @@ def aggregate_experiments_results():
         plt.xlabel(plotname)
         plt.ylabel("Probability Density")
         plt.xlim([0, 1])
+        ymax = min(plt.gca().get_ylim()[1], 8)
+        plt.ylim([0, ymax])
+        
     plt.savefig("Results.svg", bbox_inches='tight')
 
     # Step 4: Plot distribution of improvements with fusion
+    """
     names = ['MFCCs', 'Chromas']
     plt.figure(figsize=(15, 5))
     for i, plotname in enumerate(['Precision', 'Recall', 'L-Measure']):
@@ -227,10 +231,11 @@ def aggregate_experiments_results():
         plt.ylabel("Probability Density")
         #plt.gca().set_xscale("log")
     plt.savefig("Improvements.svg", bbox_inches='tight')
+    """
 
 
 if __name__ == '__main__':
     #get_inter_anno_agreement()
     #run_audio_experiments(NThreads=-1)
     aggregate_experiments_results()
-    #compute_features(2, True)
+    #compute_features(724, True)

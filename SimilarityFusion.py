@@ -144,7 +144,7 @@ def getS(W, K):
 
 
 def doSimilarityFusionWs(Ws, K = 5, niters = 20, reg_diag = 1, reg_neighbs = 0.5, \
-        do_animation = False, PlotNames = [], PlotExtents = None, verboseTimes = False):
+        do_animation = False, PlotNames = [], PlotExtents = None, verboseTimes = True):
     """
     Perform similarity fusion between a set of exponentially
     weighted similarity matrices
