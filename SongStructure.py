@@ -101,9 +101,11 @@ def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, reg
                     and the fused adjacency matrix, 
             'times': Time in seconds of each row in the similarity matrices} 
     """
+    ## Step 1: Load audio
     print("Loading %s..."%filename)
     y, sr = librosa.load(filename, sr=sr)
     
+    ## Step 2: Figure out intervals to which to sync features
     if win_fac > 0:
         # Compute features in intervals evenly spaced by the hop size
         # but average within "win_fac" intervals of hop_length
@@ -118,23 +120,33 @@ def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, reg
         intervals = librosa.segment.subsegment(C, intervals, n_segments=abs(win_fac))
 
 
-    # chroma = librosa.feature.chroma_stft(y=y, sr=sr, hop_length=hop_length)
-    # CQT chroma with 3x oversampling in pitch
+    ## Step 3: Compute features
+    # 1) CQT chroma with 3x oversampling in pitch
     chroma = librosa.feature.chroma_cqt(y=y, sr=sr, hop_length=hop_length, bins_per_octave=12*3)
+
+    # 2) Exponentially liftered MFCCs
     S = librosa.feature.melspectrogram(y, sr=sr, n_mels=128, hop_length=hop_length)
     log_S = librosa.power_to_db(S, ref=np.max)
     mfcc = librosa.feature.mfcc(S=log_S, n_mfcc=20)
-    
-    intervals = librosa.util.fix_frames(intervals, x_min=0, x_max=min(mfcc.shape[1], chroma.shape[1]))
+    lifterexp = 0.6
+    coeffs = np.arange(mfcc.shape[0])**lifterexp
+    coeffs[0] = 1
+    mfcc = coeffs[:, None]*mfcc
 
-    # chroma = librosa.util.sync(chroma, intervals)
+    # 3) Tempograms
+    
+
+    
+    ## Step 4: Synchronize features to intervals
+    n_frames = min(chroma.shape[1], mfcc.shape[1])
     # median-aggregate chroma to suppress transients and passing tones
+    intervals = librosa.util.fix_frames(intervals, x_min=0, x_max=n_frames)
     chroma = librosa.util.sync(chroma, intervals, aggregate=np.median)
     mfcc = librosa.util.sync(mfcc, intervals)
     times = intervals*float(hop_length)/float(sr)
 
 
-    n_frames = min(chroma.shape[1], mfcc.shape[1])
+    
     chroma = chroma[:, :n_frames]
     mfcc = mfcc[:, :n_frames]
 
@@ -164,7 +176,7 @@ def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, reg
     WsDict['Fused'] = WFused
     if plot_result:
         plotFusionResults(WsDict, {}, {}, times)
-        plt.show()
+        plt.savefig("%s_Plot.png"%filename, bbox_inches='tight')
     return {'Ws':WsDict, 'times':times}
 
 if __name__ == '__main__':

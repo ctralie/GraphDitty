@@ -30,8 +30,8 @@ lapfn = getUnweightedLaplacianEigsDense
 specfn = lambda v, dim, times: spectralClusterSequential(v, dim, times, rownorm=False)
 sr=22050
 hop_length=512
-win_fac=-2
-wins_per_block=40
+win_fac=10
+wins_per_block=20
 K=10
 reg_diag=1.0
 reg_neighbs=0.5
@@ -231,6 +231,6 @@ def aggregate_experiments_results():
 
 if __name__ == '__main__':
     #get_inter_anno_agreement()
-    run_audio_experiments(NThreads=4)
-    #aggregate_experiments_results()
+    #run_audio_experiments(NThreads=-1)
+    aggregate_experiments_results()
     #compute_features(2, True)
