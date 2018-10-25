@@ -209,33 +209,8 @@ def aggregate_experiments_results():
         
     plt.savefig("Results.svg", bbox_inches='tight')
 
-    # Step 4: Plot distribution of improvements with fusion
-    """
-    names = ['MFCCs', 'Chromas']
-    plt.figure(figsize=(15, 5))
-    for i, plotname in enumerate(['Precision', 'Recall', 'L-Measure']):
-        plt.subplot(1, 3, i+1)
-        for name in names:
-            prl = prls[name]
-            improvements = prls['Fused'][:, i]/prl[:, i]
-            order = np.argsort(improvements)[0:10]
-            s = ""
-            for o in order:
-                s += "\n%i: %.3g"%(idxs[o], improvements[o])
-            print("Worst 10 %s %s: %s"%(name, plotname, s))
-            print(improvements)
-            #sns.kdeplot(improvements, shade=True)
-        plt.legend(names)
-        plt.title("SPAM %s Fusion Improvement"%plotname)
-        plt.xlabel(plotname)
-        plt.ylabel("Probability Density")
-        #plt.gca().set_xscale("log")
-    plt.savefig("Improvements.svg", bbox_inches='tight')
-    """
-
 
 if __name__ == '__main__':
     #get_inter_anno_agreement()
     #run_audio_experiments(NThreads=-1)
     aggregate_experiments_results()
-    #compute_features(724, True)

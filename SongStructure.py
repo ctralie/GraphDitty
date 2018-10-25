@@ -15,11 +15,9 @@ from CSMSSMTools import getCSM, getCSMCosine
 from SimilarityFusion import doSimilarityFusion
 from SongStructureGUI import saveResultsJSON
 import subprocess
-import crema
 
 MANUAL_AUDIO_LOAD = True
 FFMPEG_BINARY = "ffmpeg"
-model = crema.models.chord.ChordModel()
 
 def plotFusionResults(Ws, vs, alllabels, times):
     """
@@ -74,7 +72,7 @@ def plotFusionResults(Ws, vs, alllabels, times):
     plt.tight_layout()
     return fig
 
-def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, reg_diag, reg_neighbs, niters, do_animation, plot_result):
+def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, reg_diag, reg_neighbs, niters, do_animation, plot_result, do_crema=True):
     """
     Load in filename, compute features, average/stack delay, and do similarity
     network fusion (SNF) on all feature types
@@ -104,7 +102,8 @@ def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, reg
         Whether to plot and save images of the evolution of SNF
     plot_result: boolean
         Whether to plot the result of the fusion
-    
+    do_crema: boolean
+        Whether to include precomputed crema in the fusion
     Returns
     -------
     {'Ws': An dictionary of weighted adjacency matrices for individual features
@@ -119,14 +118,8 @@ def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, reg
         sr, y = sio.wavfile.read("%s.wav"%filename)
         y = y/2.0**15
         os.remove("%s.wav"%filename)
-
-        subprocess.call([FFMPEG_BINARY, "-i", filename, "-ar", "44100", "-ac", "1", "%s.wav"%filename])
-        _, y44100 = sio.wavfile.read("%s.wav"%filename)
-        y44100 = y44100/2.0**15
-        os.remove("%s.wav"%filename)
     else:
         y, sr = librosa.load(filename, sr=sr)
-        y44100, _ = librosa.load(filename, sr=44100)
     
     ## Step 2: Figure out intervals to which to sync features
     if win_fac > 0:
@@ -160,44 +153,55 @@ def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, reg
     tempogram = librosa.feature.tempogram(onset_envelope=oenv, sr=sr, hop_length=hop_length)
 
     # 4) Crema
-    #data = model.outputs(y=y44100, sr=44100)
-    data = model.outputs(filename=filename)
-    fac = (float(sr)/44100.0)*4096.0/hop_length
-    times_orig = fac*np.arange(len(data['chord_bass']))
-    times_new = np.arange(mfcc.shape[1])
-    interp = scipy.interpolate.interp1d(times_orig, data['chord_pitch'].T, kind='nearest', fill_value='extrapolate')
-    chord_pitch = interp(times_new)
+    if do_crema:
+        matfilename = "%s_crema.mat"%filename
+        if not os.path.exists(matfilename):
+            print("****WARNING: PRECOMPUTED CREMA DOES NOT EXIST****")
+            do_crema = False
+        else:
+            data = sio.loadmat(matfilename)
+            fac = (float(sr)/44100.0)*4096.0/hop_length
+            times_orig = fac*np.arange(len(data['chord_bass']))
+            times_new = np.arange(mfcc.shape[1])
+            interp = scipy.interpolate.interp1d(times_orig, data['chord_pitch'].T, kind='nearest', fill_value='extrapolate')
+            chord_pitch = interp(times_new)
     
     ## Step 4: Synchronize features to intervals
-    n_frames = np.min([chroma.shape[1], mfcc.shape[1], tempogram.shape[1], chord_pitch.shape[1]])
+    n_frames = np.min([chroma.shape[1], mfcc.shape[1], tempogram.shape[1]])
+    if do_crema:
+        n_frames = min(n_frames, chord_pitch.shape[1])
     # median-aggregate chroma to suppress transients and passing tones
     intervals = librosa.util.fix_frames(intervals, x_min=0, x_max=n_frames)
-    chroma = librosa.util.sync(chroma, intervals, aggregate=np.median)
-    mfcc = librosa.util.sync(mfcc, intervals)
-    tempogram = librosa.util.sync(tempogram, intervals)
-    chord_pitch = librosa.util.sync(chord_pitch, intervals)
     times = intervals*float(hop_length)/float(sr)
 
-
-    
+    chroma = librosa.util.sync(chroma, intervals, aggregate=np.median)
     chroma = chroma[:, :n_frames]
+    mfcc = librosa.util.sync(mfcc, intervals)
     mfcc = mfcc[:, :n_frames]
+    tempogram = librosa.util.sync(tempogram, intervals)
     tempogram = tempogram[:, :n_frames]
-    chord_pitch = chord_pitch[:, :n_frames]
+    if do_crema:
+        chord_pitch = librosa.util.sync(chord_pitch, intervals)
+        chord_pitch = chord_pitch[:, :n_frames]
+    
 
     #Do a delay embedding and compute SSMs
     XChroma = librosa.feature.stack_memory(chroma, n_steps=wins_per_block, mode='edge').T
-    XMFCC = librosa.feature.stack_memory(mfcc, n_steps=wins_per_block, mode='edge').T
-    XTempogram = librosa.feature.stack_memory(tempogram, n_steps=wins_per_block, mode='edge').T
-    XChordPitch = librosa.feature.stack_memory(chord_pitch, n_steps=wins_per_block, mode='edge').T
     DChroma = getCSMCosine(XChroma, XChroma) #Cosine distance
+    XMFCC = librosa.feature.stack_memory(mfcc, n_steps=wins_per_block, mode='edge').T
     DMFCC = getCSM(XMFCC, XMFCC) #Euclidean distance
+    XTempogram = librosa.feature.stack_memory(tempogram, n_steps=wins_per_block, mode='edge').T
     DTempogram = getCSM(XTempogram, XTempogram)
-    DChordPitch = getCSMCosine(XChordPitch, XChordPitch)
+    if do_crema:
+        XChordPitch = librosa.feature.stack_memory(chord_pitch, n_steps=wins_per_block, mode='edge').T
+        DChordPitch = getCSMCosine(XChordPitch, XChordPitch)
 
     #Run similarity network fusion
-    FeatureNames = ['MFCCs', 'Chromas', 'Tempogram', 'Crema']
-    Ds = [DMFCC, DChroma, DTempogram, DChordPitch]
+    FeatureNames = ['MFCCs', 'Chromas', 'Tempogram']
+    Ds = [DMFCC, DChroma, DTempogram]
+    if do_crema:
+        FeatureNames.append('Crema')
+        Ds.append(DChordPitch)
     # Edge case: If it's too small, zeropad SSMs
     for i, Di in enumerate(Ds):
         if Di.shape[0] < 2*K:
@@ -244,6 +248,6 @@ if __name__ == '__main__':
     res = getFusedSimilarity(opt.filename, sr=opt.sr, \
         hop_length=opt.hop_length, win_fac=opt.win_fac, wins_per_block=opt.wins_per_block, \
         K=opt.K, reg_diag=opt.reg_diag, reg_neighbs=opt.reg_neighbs, niters=opt.niters, \
-        do_animation=opt.do_animation, plot_result=opt.plot_result)
+        do_animation=opt.do_animation, plot_result=opt.plot_result, do_crema=False)
     sio.savemat(opt.matfilename, res)
     saveResultsJSON(opt.filename, res['times'], res['Ws'], res['K'], opt.neigs, opt.jsonfilename, opt.diffusion_znormalize)
