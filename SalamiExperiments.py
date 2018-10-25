@@ -26,13 +26,13 @@ JAMS_DIR = 'salami-data-public-jams-multi'
 AUDIO_DIR = 'salami-data-public-audio'
 
 ## Global fusion variables
-lapfn = getUnweightedLaplacianEigsDense
+lapfn = getRandomWalkLaplacianEigsDense
 specfn = lambda v, dim, times: spectralClusterSequential(v, dim, times, rownorm=False)
 sr=22050
 hop_length=512
 win_fac=10
 wins_per_block=20
-K=10
+K=-1
 reg_diag=1.0
 reg_neighbs=0.5
 niters=10

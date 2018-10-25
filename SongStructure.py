@@ -211,7 +211,8 @@ def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, reg
     
     pK = K
     if K == -1:
-        pK = int(np.round(np.sqrt(Ds[0].shape[0])))
+        pK = int(np.round(2*np.log(Ds[0].shape[0])/np.log(2)))
+        print("Autotuned K = %i"%pK)
     (Ws, WFused) = doSimilarityFusion(Ds, K=pK, niters=niters, \
         reg_diag=reg_diag, reg_neighbs=reg_neighbs, \
         do_animation=do_animation, PlotNames=FeatureNames, \
