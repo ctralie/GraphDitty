@@ -200,7 +200,7 @@ def aggregate_experiments_results():
             k = stats.ks_2samp(interanno[:, i], prl[:, i])[0]
             legend.append('%s, K=%.3g'%(name, k))
         plt.legend(legend)
-        plt.title("SPAM %s"%plotname)
+        plt.title("Salami %s"%plotname)
         plt.xlabel(plotname)
         plt.ylabel("Probability Density")
         plt.xlim([0, 1])
