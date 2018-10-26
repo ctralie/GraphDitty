@@ -187,7 +187,7 @@ def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, reg
         chord_pitch = chord_pitch[:, :n_frames]
     
 
-    #Do a delay embedding and compute SSMs
+    ## Step 5: Do a delay embedding and compute SSMs
     XChroma = librosa.feature.stack_memory(chroma, n_steps=wins_per_block, mode='edge').T
     DChroma = getCSMCosine(XChroma, XChroma) #Cosine distance
     XMFCC = librosa.feature.stack_memory(mfcc, n_steps=wins_per_block, mode='edge').T
@@ -198,7 +198,7 @@ def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, reg
         XChordPitch = librosa.feature.stack_memory(chord_pitch, n_steps=wins_per_block, mode='edge').T
         DChordPitch = getCSMCosine(XChordPitch, XChordPitch)
 
-    #Run similarity network fusion
+    ## Step 5: Run similarity network fusion
     FeatureNames = ['MFCCs', 'Chromas', 'Tempogram']
     Ds = [DMFCC, DChroma, DTempogram]
     if do_crema:
@@ -210,11 +210,11 @@ def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, reg
             D = np.zeros((2*K, 2*K))
             D[0:Di.shape[0], 0:Di.shape[1]] = Di
             Ds[i] = D
-    
     pK = K
     if K == -1:
         pK = int(np.round(2*np.log(Ds[0].shape[0])/np.log(2)))
         print("Autotuned K = %i"%pK)
+    # Do fusion on all features
     (Ws, WFused) = doSimilarityFusion(Ds, K=pK, niters=niters, \
         reg_diag=reg_diag, reg_neighbs=reg_neighbs, \
         do_animation=do_animation, PlotNames=FeatureNames, \
@@ -223,6 +223,13 @@ def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, reg
     for n, W in zip(FeatureNames, Ws):
         WsDict[n] = W
     WsDict['Fused'] = WFused
+    # Do fusion with only Chroma and MFCC
+    (_, WsDict['Fused MFCC/Chroma']) = doSimilarityFusion([DMFCC, DChroma], K=pK, niters=niters, \
+        reg_diag=reg_diag, reg_neighbs=reg_neighbs)
+    if do_crema:
+        # Do fusion with tempograms and Crema if Crema is available
+        (_, WsDict['Fused Tgram/Crema']) = doSimilarityFusion([DTempogram, DChordPitch], K=pK, niters=niters, \
+            reg_diag=reg_diag, reg_neighbs=reg_neighbs)
     if plot_result:
         plotFusionResults(WsDict, {}, {}, times)
         plt.savefig("%s_Plot.png"%filename, bbox_inches='tight')
