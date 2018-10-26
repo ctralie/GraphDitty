@@ -171,7 +171,6 @@ def run_audio_experiments(NThreads = 12):
     if not sys.warnoptions:
         warnings.simplefilter("ignore")
     songnums = [int(s) for s in os.listdir(AUDIO_DIR)]
-    songnums.remove(878)
     if NThreads > -1:
         parpool = PPool(NThreads)
         parpool.map(compute_features, (songnums))
@@ -225,9 +224,9 @@ def aggregate_experiments_results(precomputed_name = "", multianno_only = True):
         for name in names:
             res[name] = res[name][to_keep == 1, :]
         prls = res
-    print("Plotting statistics for %i examples"%res['MFCCs'].shape[0]/2)
+    print("Plotting statistics for %i examples"%(res['MFCCs'].shape[0]/2))
     interanno = res['interanno']
-    res.pop('interanno')
+    names.remove('interanno')
         
 
     # Step 2: Plot distribution and KS-score of feature-based agreements
