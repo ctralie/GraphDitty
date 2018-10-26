@@ -34,7 +34,7 @@ win_fac=10
 wins_per_block=20
 K=-1
 reg_diag=1.0
-reg_neighbs=0.5
+reg_neighbs=0.0
 niters=10
 neigs=10
 
@@ -79,7 +79,7 @@ def get_inter_anno_agreement_par(filename):
 
 def get_inter_anno_agreement(NThreads = 12):
     """
-    Trying to replicate figure 11 in the Frontiers paper
+    Replicating the interanno part of figure 11 in the Frontiers paper
     """
     if not os.path.exists("interanno.mat"):
         parpool = PPool(NThreads)
@@ -95,13 +95,30 @@ def get_inter_anno_agreement(NThreads = 12):
     plt.ylabel("Probability Density")
     plt.show()
 
-def compute_features(num, recompute=False):
+def compute_features(num, multianno_only = True, recompute=False):
+    """
+    Compute precision, recall, and l-measure for a set of features on a particular
+    song in the SALAMI dataset, and save the results to a file called "results.mat"
+    in the folder where the audio resides
+    Parameters
+    ----------
+    num: int
+        Song number in the SALAMI dataset
+    multianno_only: boolean
+        If true, only consider songs that have more than one annotation
+    recompute: boolean
+        Compute this again, even if "results.mat" already exists
+    """
     matfilename = "%s/%i/results.mat"%(AUDIO_DIR, num)
     jamsfilename = "%s/%i.jams"%(JAMS_DIR, num)
     if (not recompute) and (os.path.exists(matfilename) or (not os.path.exists(jamsfilename))):
-        print("Skipping %i"%num)
+        print("Skipping %i because it has already been computed"%num)
         return
     filename = "%s/%i/audio.mp3"%(AUDIO_DIR, num)
+    jam = jams.load(jamsfilename)    
+    if multianno_only and len(jam.annotations) < 8:
+        print("Skipping %i because there is only one annotation"%num)
+        return
     print("Doing %i..."%num)
 
     # Step 1: Compute feature-based similarity matrix and the matrix
@@ -118,7 +135,6 @@ def compute_features(num, recompute=False):
     speclabels_hier = {name:[res['labels_hier'] for res in alllabels[name]] for name in alllabels}
 
     ## Step 3: Compare to annotators and save results
-    jam = jams.load(jamsfilename)    
     ret = {name:[] for name in Ws}
     for annidx in range(int(len(jam.annotations)/4)):
         for name in alllabels:
@@ -130,6 +146,12 @@ def compute_features(num, recompute=False):
             l_precision, l_recall, l_measure = mir_eval.hierarchy.lmeasure(intervals_hier, labels_hier, specintervals_hier[name], speclabels_hier[name])
             ret[name] += [l_precision, l_recall, l_measure]
             print("Annotator %i song %i %s: p = %.3g, r = %.3g, l = %.3g"%(annidx, num, name, l_precision, l_recall, l_measure))
+    if len(jam.annotations) == 8:
+        # Compute and store inter-annotator for convenience
+        intervals_hier1, labels_hier1 = jam_annos_to_lists(jam.annotations[1], jam.annotations[2])
+        intervals_hier2, labels_hier2 = jam_annos_to_lists(jam.annotations[4], jam.annotations[5])
+        l_precision, l_recall, l_measure = mir_eval.hierarchy.lmeasure(intervals_hier1, labels_hier1, intervals_hier2, labels_hier2)
+        ret['interanno'] = [l_precision, l_recall, l_measure]
     sio.savemat(matfilename, ret)
 
     ## Step 4: Plot SSM, eigenvectors, and clustering at the finest level
@@ -157,37 +179,58 @@ def run_audio_experiments(NThreads = 12):
         for num in songnums:
             compute_features(num)
 
-def aggregate_experiments_results():
+def aggregate_experiments_results(precomputed_name = "", multianno_only = True):
     """
     Load all of the results from the SALAMI experiment and plot
     the annotator agreements
     """
-    # Step 1: Extract inter-annotator agreements
-    interanno = sio.loadmat("interanno.mat")["res"]
-    interanno = interanno[interanno[:, 0] > -1, :]
-
-    # Step 2: Extract feature-based agreements
-    names = ['MFCCs', 'Chromas', 'Tempogram', 'Crema', 'Fused']
+    # Step 1: Extract feature-based agreements
+    names = ['MFCCs', 'Chromas', 'Tempogram', 'Crema', 'Fused', 'interanno']
     prls = {name:np.zeros((0, 3)) for name in names} # Dictionary of precison, recall, and l-scores
     idxs = [] #Indices of 
 
-    for num in [int(s) for s in os.listdir(AUDIO_DIR)]:
-        matfilename = '%s/%i/results.mat'%(AUDIO_DIR, num)
-        if os.path.exists(matfilename):
-            res = sio.loadmat(matfilename)
-            nanno = 0
-            for name in names:
-                nres = res[name]
-                nres = np.reshape(nres, (int(nres.size/3), 3))
-                prls[name] = np.concatenate((prls[name], nres), 0)
-                nanno = nres.shape[0]
-            idxs += [num]*nanno
-    idxs = np.array(idxs)
-    res = {a:prls[a] for a in prls}
-    res['idxs'] = idxs
-    sio.savemat("allresults.mat", res)
+    if len(precomputed_name) == 0:
+        for num in [int(s) for s in os.listdir(AUDIO_DIR)]:
+            matfilename = '%s/%i/results.mat'%(AUDIO_DIR, num)
+            if os.path.exists(matfilename):
+                res = sio.loadmat(matfilename)
+                nanno = 0
+                for name in names:
+                    if name in res:
+                        nres = res[name]
+                        nres = np.reshape(nres, (int(nres.size/3), 3))
+                        nanno = nres.shape[0]
+                        if (not (name == 'interanno')) and nanno < 2 and multianno_only:
+                            continue
+                        prls[name] = np.concatenate((prls[name], nres), 0)
+                idxs += [num]*nanno
+        idxs = np.array(idxs)
+        res = {a:prls[a] for a in prls}
+        res['idxs'] = idxs
+        sio.savemat("allresults.mat", res)
+    else:
+        res = sio.loadmat(precomputed_name)
+        idxs = res['idxs'].flatten()
+        counts = {}
+        for idx in idxs:
+            if not idx in counts:
+                counts[idx] = 0
+            counts[idx] += 1
+        to_keep = np.ones_like(idxs)
+        for i, idx in enumerate(idxs):
+            if counts[idx] < 2:
+                to_keep[i] = 0
+        print(to_keep.shape)
+        res.pop('idxs')
+        for name in names:
+            res[name] = res[name][to_keep == 1, :]
+        prls = res
+    print("Plotting statistics for %i examples"%res['MFCCs'].shape[0]/2)
+    interanno = res['interanno']
+    res.pop('interanno')
+        
 
-    # Step 3: Plot distribution and KS-score of feature-based agreements
+    # Step 2: Plot distribution and KS-score of feature-based agreements
     # versus inter-annotator agreements
     plt.figure(figsize=(15, 5))
     for i, plotname in enumerate(['Precision', 'Recall', 'L-Measure']):
@@ -206,6 +249,7 @@ def aggregate_experiments_results():
         plt.xlim([0, 1])
         ymax = min(plt.gca().get_ylim()[1], 8)
         plt.ylim([0, ymax])
+        plt.ylim([0, 5])
         
     plt.savefig("Results.svg", bbox_inches='tight')
 
