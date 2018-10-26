@@ -106,7 +106,7 @@ def spectralClusterSequential(v, dim, times, rownorm=False):
         norms = np.sqrt(np.sum(x**2, 1))
         norms[norms == 0] = 1
         x /= norms[:, None]
-    labels = KMeans(n_clusters = dim).fit(x).labels_
+    labels = KMeans(n_clusters = dim, n_init=50, max_iter=500).fit(x).labels_
     splits = np.where(np.abs(labels[1::]-labels[0:-1]) > 0)[0]+1
     splits = np.concatenate(([0], splits, [labels.size]))
     # Handle edge case with small audio
