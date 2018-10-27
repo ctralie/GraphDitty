@@ -155,8 +155,11 @@ def compute_features(num, multianno_only = True, recompute=False):
     sio.savemat(matfilename, ret)
 
     ## Step 4: Plot SSM, eigenvectors, and clustering at the finest level
-    fig = plotFusionResults(Ws, vs, alllabels, times)
-    figpath = "%s/%i/Fusion.png"%(AUDIO_DIR, num)
+    fig = plotFusionResults(Ws, vs, alllabels, times, win_fac)
+    if win_fac > 0:
+        figpath = "%s/%i/Fusion.svg"%(AUDIO_DIR, num)
+    else:
+        figpath = "%s/%i/Fusion.png"%(AUDIO_DIR, num)
     print("Saving to %s"%figpath)
     plt.savefig(figpath, bbox_inches='tight')
     plt.close(fig)
@@ -184,7 +187,7 @@ def aggregate_experiments_results(precomputed_name = "", multianno_only = True):
     the annotator agreements
     """
     # Step 1: Extract feature-based agreements
-    names = ['MFCCs', 'Chromas', 'Tempogram', 'Crema', 'Fused', 'interanno']
+    names = ['MFCCs', 'Chromas', 'Tempogram', 'Crema', 'Fused Tgram/Crema', 'Fused MFCC/Chroma', 'Fused', 'interanno']
     prls = {name:np.zeros((0, 3)) for name in names} # Dictionary of precison, recall, and l-scores
     idxs = [] #Indices of 
 
@@ -193,23 +196,26 @@ def aggregate_experiments_results(precomputed_name = "", multianno_only = True):
             matfilename = '%s/%i/results.mat'%(AUDIO_DIR, num)
             if os.path.exists(matfilename):
                 res = sio.loadmat(matfilename)
-                nanno = 0
+                thisnanno = 0
                 for name in names:
                     if name in res:
                         nres = res[name]
                         nres = np.reshape(nres, (int(nres.size/3), 3))
                         nanno = nres.shape[0]
+                        thisnanno = max(thisnanno, nanno)
                         if (not (name == 'interanno')) and nanno < 2 and multianno_only:
                             continue
                         prls[name] = np.concatenate((prls[name], nres), 0)
-                idxs += [num]*nanno
+                idxs += [num]*thisnanno
         idxs = np.array(idxs)
+        print("idxs.shape = ", idxs.shape)
         res = {a:prls[a] for a in prls}
         res['idxs'] = idxs
         sio.savemat("allresults.mat", res)
     else:
         res = sio.loadmat(precomputed_name)
         idxs = res['idxs'].flatten()
+        print("idxs.shape = ", idxs.shape)
         counts = {}
         for idx in idxs:
             if not idx in counts:
@@ -240,7 +246,7 @@ def aggregate_experiments_results(precomputed_name = "", multianno_only = True):
             prl = prls[name]
             sns.kdeplot(prl[:, i], shade=True)
             k = stats.ks_2samp(interanno[:, i], prl[:, i])[0]
-            legend.append('%s, K=%.3g'%(name, k))
+            legend.append('%s, K=%.3g, Mean=%.3g'%(name, k, np.mean(prl[:, i])))
         plt.legend(legend)
         plt.title("Salami %s"%plotname)
         plt.xlabel(plotname)
@@ -251,6 +257,29 @@ def aggregate_experiments_results(precomputed_name = "", multianno_only = True):
         plt.ylim([0, 5])
         
     plt.savefig("Results.svg", bbox_inches='tight')
+    
+    plt.clf()
+    interanno = prls['interanno']
+    ## Step 3: Scatter inter-annotator scores against fused scores
+    for i, plotname in enumerate(['Precision', 'Recall', 'L-Measure']):
+        plt.subplot(1, 3, i+1)
+        prl = prls['Fused']
+        plt.scatter(prl[0::2, i], interanno[:, i])
+        plt.scatter(prl[1::2, i], interanno[:, i])
+        plt.title("Salami %s"%plotname)
+        plt.xlabel("Annotator-fused agreement")
+        plt.ylabel("Annotator-annotator agreement")
+    plt.savefig("Results_AnnotatorAgreement.png", bbox_inches='tight')
+
+    ## Step 4: Report top 10 recall improvements of fusion over other features
+    improvement = np.ones(prls['Fused'].shape[0])
+    for name in names:
+        if name == 'Fused' or name == 'interanno':
+            continue
+        improvement += prls[name][:, i]
+    print("idxs.size = ", idxs.size)
+    print("improvement.size = ", improvement.size)
+    print(idxs[np.argsort(-improvement)][0:20])
 
 
 if __name__ == '__main__':

@@ -19,7 +19,7 @@ import subprocess
 MANUAL_AUDIO_LOAD = True
 FFMPEG_BINARY = "ffmpeg"
 
-def plotFusionResults(Ws, vs, alllabels, times):
+def plotFusionResults(Ws, vs, alllabels, times, win_fac):
     """
     Show a plot of different adjacency matrices and their associated eigenvectors
     and cluster labels, if applicable
@@ -35,43 +35,48 @@ def plotFusionResults(Ws, vs, alllabels, times):
         If there is not a key for a particular adjacency matrix type, it isn't plotted
     times: ndarray(N)
         A list of times corresponding to each row in Ws
-    
+    win_fac: int
+        Number of frames that have been averaged in each window
+        If negative, beat tracking has been done, and the intervals are possibly non-uniform
+        This means that a mesh plot will be necessary
     Returns
     -------
     fig: matplotlib.pyplot object
         Handle to the figure
     """
     nrows = int(np.ceil(len(Ws)/3.0))
-    fig = plt.figure(figsize=(0.7*30, 0.7*8*nrows))
+    fig = plt.figure(figsize=(0.5*32, 0.5*8*nrows))
+    time_uniform = win_fac >= 0
     for i, name in enumerate(Ws):
         W = Ws[name]
-        WShow = np.array(W)
+        WShow = np.log(5e-2+W)
         np.fill_diagonal(WShow, 0)
         row, col = np.unravel_index(i, (nrows, 3))
-        plt.subplot2grid((nrows, 9*3), (row, col*9), colspan=7)
-        plt.pcolormesh(times, times, np.log(5e-2+WShow), cmap = 'afmhot')
-        plt.gca().invert_yaxis()
-        plt.title("%s Similarity Matrix"%name)
-        plt.xlabel("Time (sec)")
-        plt.ylabel("Time (sec)")
-        if name in vs:
-            v = vs[name]
-            plt.subplot2grid((nrows, 9*3), (row, col*9+7))
-            plt.pcolormesh(np.arange(v.shape[1]+1), times, v, cmap='afmhot')
+        plt.subplot2grid((nrows, 8*3), (row, col*8), colspan=7)
+        if time_uniform:
+            plt.imshow(WShow, cmap ='afmhot', extent=(times[0], times[-1], times[-1], times[0]), interpolation='nearest')
+        else:
+            plt.pcolormesh(times, times, WShow, cmap = 'afmhot')
             plt.gca().invert_yaxis()
-            plt.title("Laplacian")
-            plt.xlabel("Eigenvector Num")
-            plt.xticks(0.5 + np.arange(v.shape[1]), ["%i"%(i+1) for i in range(v.shape[1])])
+        plt.title("%s Similarity Matrix"%name)
+        if row == nrows-1:
+            plt.xlabel("Time (sec)")
+        if col == 0:
+            plt.ylabel("Time (sec)")
         if name in alllabels:
-            plt.subplot2grid((nrows, 9*3), (row, col*9+8))
+            plt.subplot2grid((nrows, 8*3), (row, col*8+7))
             levels = [-1] # Look at only finest level for now
             labels = np.zeros((W.shape[0], len(levels)))
             for k, level in enumerate(levels):
                 labels[:, k] = alllabels[name][level]['labels']
-            plt.pcolormesh(np.arange(labels.shape[1]+1), times, labels, cmap = 'tab20b')
-            plt.gca().invert_yaxis()
+            if time_uniform:
+                plt.imshow(labels, cmap = 'tab20b', interpolation='nearest', aspect='auto', extent=(0, 1, times[-1], times[0]))
+            else:
+                plt.pcolormesh(np.arange(labels.shape[1]+1), times, labels, cmap = 'tab20b')
+                plt.gca().invert_yaxis()
+            plt.axis('off')
             plt.title("Clusters")
-    plt.tight_layout()
+    #plt.tight_layout()
     return fig
 
 def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, reg_diag, reg_neighbs, niters, do_animation, plot_result, do_crema=True):
@@ -231,7 +236,7 @@ def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, reg
         (_, WsDict['Fused Tgram/Crema']) = doSimilarityFusion([DTempogram, DChordPitch], K=pK, niters=niters, \
             reg_diag=reg_diag, reg_neighbs=reg_neighbs)
     if plot_result:
-        plotFusionResults(WsDict, {}, {}, times)
+        plotFusionResults(WsDict, {}, {}, times, win_fac)
         plt.savefig("%s_Plot.png"%filename, bbox_inches='tight')
     return {'Ws':WsDict, 'times':times, 'K':pK}
 
