@@ -4,6 +4,7 @@ SALAMI NOTES
 """
 import matplotlib.pyplot as plt
 import seaborn as sns
+import scipy
 import scipy.io as sio
 from scipy import stats
 import numpy as np
@@ -37,6 +38,7 @@ reg_diag=1.0
 reg_neighbs=0.0
 niters=10
 neigs=10
+REC_SMOOTH = 9
 
 
 
@@ -125,6 +127,10 @@ def compute_features(num, multianno_only = True, recompute=False):
     # fusing all of them
     res = getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, reg_diag, reg_neighbs, niters, False, False)
     Ws, times = res['Ws'], res['times']
+    df = librosa.segment.timelag_filter(scipy.ndimage.median_filter)
+    for name in Ws:
+        Ws[name] = df(Ws[name], size=(1, REC_SMOOTH))
+        np.fill_diagonal(Ws[name], 0)
 
     # Step 2: Compute Laplacian eigenvectors and perform spectral clustering
     # at different resolutions
@@ -155,7 +161,8 @@ def compute_features(num, multianno_only = True, recompute=False):
     sio.savemat(matfilename, ret)
 
     ## Step 4: Plot SSM, eigenvectors, and clustering at the finest level
-    fig = plotFusionResults(Ws, vs, alllabels, times, win_fac)
+    intervals_hier1, labels_hier1 = jam_annos_to_lists(jam.annotations[1], jam.annotations[2])
+    fig = plotFusionResults(Ws, vs, alllabels, times, win_fac, intervals_hier1, labels_hier1)
     if win_fac > 0:
         figpath = "%s/%i/Fusion.svg"%(AUDIO_DIR, num)
     else:

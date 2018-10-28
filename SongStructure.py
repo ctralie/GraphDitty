@@ -19,7 +19,7 @@ import subprocess
 MANUAL_AUDIO_LOAD = True
 FFMPEG_BINARY = "ffmpeg"
 
-def plotFusionResults(Ws, vs, alllabels, times, win_fac):
+def plotFusionResults(Ws, vs, alllabels, times, win_fac, intervals_hier = [], labels_hier = []):
     """
     Show a plot of different adjacency matrices and their associated eigenvectors
     and cluster labels, if applicable
@@ -65,7 +65,7 @@ def plotFusionResults(Ws, vs, alllabels, times, win_fac):
             plt.ylabel("Time (sec)")
         if name in alllabels:
             plt.subplot2grid((nrows, 8*3), (row, col*8+7))
-            levels = [-1] # Look at only finest level for now
+            levels = [0] # Look at only finest level for now
             labels = np.zeros((W.shape[0], len(levels)))
             for k, level in enumerate(levels):
                 labels[:, k] = alllabels[name][level]['labels']
@@ -77,6 +77,21 @@ def plotFusionResults(Ws, vs, alllabels, times, win_fac):
             plt.axis('off')
             plt.title("Clusters")
     #plt.tight_layout()
+    if len(labels_hier) > 0:
+        for k in range(2):
+            plt.subplot2grid((nrows, 8*3), (nrows-1, 10+k*3))
+            labels = []
+            labelsdict = {}
+            for a in labels_hier[k]:
+                if not a in labelsdict:
+                    labelsdict[a] = len(labelsdict)
+                labels.append(labelsdict[a])
+            labels = np.array(labels)
+            plt.pcolormesh(np.arange(2), intervals_hier[k][:, 0], np.concatenate((labels[:, None], labels[:, None]), 1), cmap='tab20b')
+            for i in range(intervals_hier[k].shape[0]):
+                t = intervals_hier[k][i, 0]
+                plt.plot([0, 1], [t, t], 'k', linestyle='--')
+            plt.gca().invert_yaxis()
     return fig
 
 def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, reg_diag, reg_neighbs, niters, do_animation, plot_result, do_crema=True):
@@ -156,8 +171,8 @@ def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, reg
     mfcc = coeffs[:, None]*mfcc
 
     # 3) Tempograms
-    #  Use a super-flux max smoothing of 3 frequency bands in the oenv calculation
-    SUPERFLUX_SIZE = 3
+    #  Use a super-flux max smoothing of 5 frequency bands in the oenv calculation
+    SUPERFLUX_SIZE = 5
     oenv = librosa.onset.onset_strength(y=y, sr=sr, hop_length=hop_length,
                                         max_size=SUPERFLUX_SIZE)
     tempogram = librosa.feature.tempogram(onset_envelope=oenv, sr=sr, hop_length=hop_length)

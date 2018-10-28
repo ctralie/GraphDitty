@@ -6,6 +6,8 @@ import numpy.linalg as linalg
 import scipy.linalg as sclinalg
 from sklearn.cluster import KMeans
 
+EVEC_SMOOTH = 9
+
 def getUnweightedLaplacianEigsDense(W):
     """
     Get eigenvectors of the unweighted Laplacian
@@ -101,7 +103,8 @@ def spectralClusterSequential(v, dim, times, rownorm=False):
         Corresponding segment labels for annotations
     """
     assert dim <= v.shape[1]
-    x = v[:, 0:dim]
+    x = np.array(v[:, 0:dim])
+    x = scipy.ndimage.median_filter(x, size=(EVEC_SMOOTH, 1))
     if rownorm:
         norms = np.sqrt(np.sum(x**2, 1))
         norms[norms == 0] = 1
