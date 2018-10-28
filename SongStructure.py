@@ -19,7 +19,7 @@ import subprocess
 MANUAL_AUDIO_LOAD = True
 FFMPEG_BINARY = "ffmpeg"
 
-def plotFusionResults(Ws, vs, alllabels, times, win_fac):
+def plotFusionResults(Ws, vs, alllabels, times, win_fac, intervals_hier = [], labels_hier = []):
     """
     Show a plot of different adjacency matrices and their associated eigenvectors
     and cluster labels, if applicable
@@ -50,7 +50,7 @@ def plotFusionResults(Ws, vs, alllabels, times, win_fac):
     for i, name in enumerate(Ws):
         W = Ws[name]
         WShow = np.log(5e-2+W)
-        np.fill_diagonal(WShow, 0)
+        np.fill_diagonal(WShow, np.min(WShow))
         row, col = np.unravel_index(i, (nrows, 3))
         plt.subplot2grid((nrows, 8*3), (row, col*8), colspan=7)
         if time_uniform:
@@ -65,7 +65,7 @@ def plotFusionResults(Ws, vs, alllabels, times, win_fac):
             plt.ylabel("Time (sec)")
         if name in alllabels:
             plt.subplot2grid((nrows, 8*3), (row, col*8+7))
-            levels = [-1] # Look at only finest level for now
+            levels = [0] # Look at only finest level for now
             labels = np.zeros((W.shape[0], len(levels)))
             for k, level in enumerate(levels):
                 labels[:, k] = alllabels[name][level]['labels']
@@ -77,6 +77,21 @@ def plotFusionResults(Ws, vs, alllabels, times, win_fac):
             plt.axis('off')
             plt.title("Clusters")
     #plt.tight_layout()
+    if len(labels_hier) > 0:
+        for k in range(2):
+            plt.subplot2grid((nrows, 8*3), (nrows-1, 10+k*3))
+            labels = []
+            labelsdict = {}
+            for a in labels_hier[k]:
+                if not a in labelsdict:
+                    labelsdict[a] = len(labelsdict)
+                labels.append(labelsdict[a])
+            labels = np.array(labels)
+            plt.pcolormesh(np.arange(2), intervals_hier[k][:, 0], np.concatenate((labels[:, None], labels[:, None]), 1), cmap='tab20b')
+            for i in range(intervals_hier[k].shape[0]):
+                t = intervals_hier[k][i, 0]
+                plt.plot([0, 1], [t, t], 'k', linestyle='--')
+            plt.gca().invert_yaxis()
     return fig
 
 def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, reg_diag, reg_neighbs, niters, do_animation, plot_result, do_crema=True):
@@ -251,7 +266,7 @@ if __name__ == '__main__':
     parser.add_argument('--wins_per_block', type=int, default=20, help="Number of frames to stack in sliding window for every feature")
     parser.add_argument('--K', type=int, default=10, help="Number of nearest neighbors in similarity network fusion.  If -1, then autotune to sqrt(N) for an NxN similarity matrix")
     parser.add_argument('--reg_diag', type=float, default=1.0, help="Regularization for self-similarity promotion")
-    parser.add_argument('--reg_neighbs', type=float, default=0.5, help="Regularization for direct neighbor similarity promotion")
+    parser.add_argument('--reg_neighbs', type=float, default=0.0, help="Regularization for direct neighbor similarity promotion")
     parser.add_argument('--niters', type=int, default=10, help="Number of iterations in similarity network fusion")
     parser.add_argument('--neigs', type=int, default=8, help="Number of eigenvectors in the graph Laplacian")
     parser.add_argument('--matfilename', type=str, default="out.mat", help="Name of the .mat file to which to save the results")

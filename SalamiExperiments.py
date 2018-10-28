@@ -12,6 +12,7 @@ import mir_eval
 import jams
 import glob
 import os
+import subprocess
 import sys
 import warnings
 import time
@@ -65,6 +66,7 @@ def jam_annos_to_lists(coarse, fine):
             labels_hier[i].append(val.value)
         intervals_hier[i] = np.array(intervals_hier[i])
     return intervals_hier, labels_hier
+
 
 def get_inter_anno_agreement_par(filename):
     print(filename)
@@ -135,6 +137,7 @@ def compute_features(num, multianno_only = True, recompute=False):
     speclabels_hier = {name:[res['labels_hier'] for res in alllabels[name]] for name in alllabels}
 
     ## Step 3: Compare to annotators and save results
+    """
     ret = {name:[] for name in Ws}
     for annidx in range(int(len(jam.annotations)/4)):
         for name in alllabels:
@@ -153,9 +156,13 @@ def compute_features(num, multianno_only = True, recompute=False):
         l_precision, l_recall, l_measure = mir_eval.hierarchy.lmeasure(intervals_hier1, labels_hier1, intervals_hier2, labels_hier2)
         ret['interanno'] = [l_precision, l_recall, l_measure]
     sio.savemat(matfilename, ret)
+    """
 
     ## Step 4: Plot SSM, eigenvectors, and clustering at the finest level
-    fig = plotFusionResults(Ws, vs, alllabels, times, win_fac)
+    intervals_hier1, labels_hier1 = jam_annos_to_lists(jam.annotations[1], jam.annotations[2])
+    print(intervals_hier1)
+    print(labels_hier1)
+    fig = plotFusionResults(Ws, vs, alllabels, times, win_fac, intervals_hier1, labels_hier1)
     if win_fac > 0:
         figpath = "%s/%i/Fusion.svg"%(AUDIO_DIR, num)
     else:
@@ -281,8 +288,60 @@ def aggregate_experiments_results(precomputed_name = "", multianno_only = True):
     print("improvement.size = ", improvement.size)
     print(idxs[np.argsort(-improvement)][0:20])
 
+def compare_to_scluster():
+    """
+    Compare to scluster to figure out which fused examples have inferior performance
+    """
+    import pandas
+
+    ## Step 1: Load in scluster results
+    scluster = pandas.read_csv('scluster_salami_all.csv')
+    res = scluster[['TRACK', 'MULTI_L-Precision', 'MULTI_L-Recall', 'MULTI_L-Measure']].values
+    prl_scluster = {}
+    for i in range(res.shape[0]):
+        track = res[i, 0]
+        if not track in prl_scluster:
+            prl_scluster[track] = np.zeros((0, 3))
+        prl = res[i, 1::]
+        prl_scluster[track] = np.concatenate((prl_scluster[track], prl[None, :]), 0)
+    
+    ## Step 2: Load in fusion results
+    res = sio.loadmat('allresults.mat')
+    idxs = res['idxs'].flatten()
+    prl_fused = {}
+    for i, track in enumerate(idxs):
+        if not track in prl_fused:
+            prl_fused[track] = np.zeros((0, 3))
+        prl = res['Fused'][i, :].flatten()
+        prl_fused[track] = np.concatenate((prl_fused[track], prl[None, :]), 0)
+    
+    diffs = np.zeros(len(prl_fused))
+    tracks = np.zeros(len(prl_fused), dtype = np.int64)
+    i = 0
+    for track in prl_fused:
+        recall1 = np.sort(prl_fused[track][:, 1])
+        recall2 = np.sort(prl_scluster[track][:, 1])
+        diffs[i] = np.sum(recall1-recall2)
+        tracks[i] = track
+        i += 1
+    idx = np.argsort(diffs)
+    print(diffs[idx[0:10]])
+    print(tracks[idx[0:10]])
+    for track in tracks[idx[0:10]]:
+        print("scluster %i: %s"%(track, prl_scluster[track][:, 1]))
+        print("fusion %i: %s"%(track, prl_fused[track][:, 1]))
+
+
+
+
 
 if __name__ == '__main__':
     #get_inter_anno_agreement()
     #run_audio_experiments(NThreads=-1)
-    aggregate_experiments_results()
+    #aggregate_experiments_results()
+    compare_to_scluster()
+    """
+    for num in [ 251]:#,  282, 1254,  118,  221,  142,  839,  218,   78,  768]:
+        compute_features(num, recompute=True)
+        subprocess.call(["convert", "%s/%i/Fusion.svg"%(AUDIO_DIR, num), "%i.png"%num])
+    """
