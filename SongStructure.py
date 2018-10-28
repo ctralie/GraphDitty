@@ -156,7 +156,10 @@ def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, reg
     mfcc = coeffs[:, None]*mfcc
 
     # 3) Tempograms
-    oenv = librosa.onset.onset_strength(y=y, sr=sr, hop_length=hop_length)
+    #  Use a super-flux max smoothing of 3 frequency bands in the oenv calculation
+    SUPERFLUX_SIZE = 3
+    oenv = librosa.onset.onset_strength(y=y, sr=sr, hop_length=hop_length,
+                                        max_size=SUPERFLUX_SIZE)
     tempogram = librosa.feature.tempogram(onset_envelope=oenv, sr=sr, hop_length=hop_length)
 
     # 4) Crema
