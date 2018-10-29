@@ -257,6 +257,12 @@ def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, reg
         # Do fusion with tempograms and Crema if Crema is available
         WsDict['Fused Tgram/Crema'] = doSimilarityFusionWs(Ws[2::], K=pK, niters=niters, \
             reg_diag=reg_diag, reg_neighbs=reg_neighbs)
+        # Do fusion with MFCC and Crema
+        WsDict['Fused MFCC/Crema'] = doSimilarityFusionWs([Ws[0], Ws[-1]], K=pK, niters=niters, \
+            reg_diag=reg_diag, reg_neighbs=reg_neighbs)
+        # Do fusion with MFCC, Chroma, and Crema
+        WsDict['Fused MFCC/Chroma/Crema'] = doSimilarityFusionWs([Ws[0], Ws[1], Ws[-1]], K=pK, niters=niters, \
+            reg_diag=reg_diag, reg_neighbs=reg_neighbs)
     if plot_result:
         plotFusionResults(WsDict, {}, {}, times, win_fac)
         plt.savefig("%s_Plot.png"%filename, bbox_inches='tight')
