@@ -12,10 +12,11 @@ import librosa
 import librosa.display
 import argparse
 from CSMSSMTools import getCSM, getCSMCosine
-from SimilarityFusion import doSimilarityFusion
+from SimilarityFusion import doSimilarityFusionWs, getW
 from SongStructureGUI import saveResultsJSON
 import subprocess
 
+REC_SMOOTH = 9
 MANUAL_AUDIO_LOAD = True
 FFMPEG_BINARY = "ffmpeg"
 
@@ -238,7 +239,10 @@ def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, reg
         pK = int(np.round(2*np.log(Ds[0].shape[0])/np.log(2)))
         print("Autotuned K = %i"%pK)
     # Do fusion on all features
-    (Ws, WFused) = doSimilarityFusion(Ds, K=pK, niters=niters, \
+    df = librosa.segment.timelag_filter(scipy.ndimage.median_filter)
+    Ws = [df(getW(D, pK), size=(1, REC_SMOOTH)) for D in Ds]
+
+    WFused = doSimilarityFusionWs(Ws, K=pK, niters=niters, \
         reg_diag=reg_diag, reg_neighbs=reg_neighbs, \
         do_animation=do_animation, PlotNames=FeatureNames, \
         PlotExtents=[times[0], times[-1]]) 
@@ -247,11 +251,11 @@ def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, reg
         WsDict[n] = W
     WsDict['Fused'] = WFused
     # Do fusion with only Chroma and MFCC
-    (_, WsDict['Fused MFCC/Chroma']) = doSimilarityFusion([DMFCC, DChroma], K=pK, niters=niters, \
+    WsDict['Fused MFCC/Chroma'] = doSimilarityFusionWs(Ws[0:2], K=pK, niters=niters, \
         reg_diag=reg_diag, reg_neighbs=reg_neighbs)
     if do_crema:
         # Do fusion with tempograms and Crema if Crema is available
-        (_, WsDict['Fused Tgram/Crema']) = doSimilarityFusion([DTempogram, DChordPitch], K=pK, niters=niters, \
+        WsDict['Fused Tgram/Crema'] = doSimilarityFusionWs(Ws[2::], K=pK, niters=niters, \
             reg_diag=reg_diag, reg_neighbs=reg_neighbs)
     if plot_result:
         plotFusionResults(WsDict, {}, {}, times, win_fac)

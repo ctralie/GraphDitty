@@ -38,7 +38,6 @@ reg_diag=1.0
 reg_neighbs=0.0
 niters=10
 neigs=10
-REC_SMOOTH = 9
 
 
 
@@ -130,7 +129,6 @@ def compute_features(num, multianno_only = True, recompute=False):
     df = librosa.segment.timelag_filter(scipy.ndimage.median_filter)
     for name in Ws:
         Ws[name] = df(Ws[name], size=(1, REC_SMOOTH))
-        np.fill_diagonal(Ws[name], 0)
 
     # Step 2: Compute Laplacian eigenvectors and perform spectral clustering
     # at different resolutions
