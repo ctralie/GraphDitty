@@ -104,7 +104,8 @@ def spectralClusterSequential(v, dim, times, rownorm=False):
     """
     assert dim <= v.shape[1]
     x = np.array(v[:, 0:dim])
-    x = scipy.ndimage.median_filter(x, size=(EVEC_SMOOTH, 1))
+    if EVEC_SMOOTH > 0:
+        x = scipy.ndimage.median_filter(x, size=(EVEC_SMOOTH, 1))
     if rownorm:
         norms = np.sqrt(np.sum(x**2, 1))
         norms[norms == 0] = 1

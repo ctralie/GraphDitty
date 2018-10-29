@@ -239,8 +239,10 @@ def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, reg
         pK = int(np.round(2*np.log(Ds[0].shape[0])/np.log(2)))
         print("Autotuned K = %i"%pK)
     # Do fusion on all features
-    df = librosa.segment.timelag_filter(scipy.ndimage.median_filter)
-    Ws = [df(getW(D, pK), size=(1, REC_SMOOTH)) for D in Ds]
+    Ws = [getW(D, pK) for D in Ds]
+    if REC_SMOOTH > 0:
+        df = librosa.segment.timelag_filter(scipy.ndimage.median_filter)
+        Ws = [df(W, size=(1, REC_SMOOTH)) for W in Ws]
 
     WFused = doSimilarityFusionWs(Ws, K=pK, niters=niters, \
         reg_diag=reg_diag, reg_neighbs=reg_neighbs, \

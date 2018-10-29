@@ -127,8 +127,9 @@ def compute_features(num, multianno_only = True, recompute=False):
     res = getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, reg_diag, reg_neighbs, niters, False, False)
     Ws, times = res['Ws'], res['times']
     df = librosa.segment.timelag_filter(scipy.ndimage.median_filter)
-    for name in Ws:
-        Ws[name] = df(Ws[name], size=(1, REC_SMOOTH))
+    if REC_SMOOTH > 0:
+        for name in Ws:
+            Ws[name] = df(Ws[name], size=(1, REC_SMOOTH))
 
     # Step 2: Compute Laplacian eigenvectors and perform spectral clustering
     # at different resolutions
