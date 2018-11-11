@@ -17,19 +17,18 @@ function SimilarityCanvas(audio_obj) {
 			.attr('x1', 0).attr('x2', 0)
 			.attr('y1', 0).attr('y2', 0)
 			.attr('stroke-width', 2)
-			.attr('stroke', 'cyan');
+			.attr('stroke', 'black');
 	this.ssmlinevert = this.ssmcanvas.append('line')
 			.attr('x1', 0).attr('x2', 0)
 			.attr('y1', 0).attr('y2', 0)
-			.style('fill', 'cyan')
 			.attr('stroke-width', 2)
-			.attr('stroke', 'cyan');
+			.attr('stroke', 'black');
 	this.EigImage = this.eigcanvas.append('image');
 	this.eiglinevert = this.eigcanvas.append('line')
 			.attr('x1', 0).attr('x2', 0)
 			.attr('y1', 0).attr('y2', 0)
 			.attr('stroke-width', 2)
-			.attr('stroke', 'cyan');
+			.attr('stroke', 'black');
 	this.audio_obj = audio_obj;
 
 	/**

@@ -143,7 +143,7 @@ def saveResultsJSON(filename, times, Ws, K, neigs, jsonfilename, diffusion_znorm
     W = Ws['Fused']
     WOut = np.array(W)
     np.fill_diagonal(WOut, 0)
-    Results['W'] = getBase64PNGImage(WOut, 'afmhot', 5e-2)
+    Results['W'] = getBase64PNGImage(WOut, 'magma_r', np.quantile(WOut.flatten(), 0.01))
     Results['dim'] = W.shape[0]
     
     # Compute Laplacian eigenvectors
@@ -157,7 +157,7 @@ def saveResultsJSON(filename, times, Ws, K, neigs, jsonfilename, diffusion_znorm
     vout = np.zeros((v.shape[1]*fac, v.shape[0]))
     for i in range(fac):
         vout[i::fac, :] = v.T
-    Results['v'] = getBase64PNGImage(vout, 'afmhot')
+    Results['v'] = getBase64PNGImage(vout, 'coolwarm')
     Results['v_height'] = vout.shape[0]
 
     # Setup the graph

@@ -56,9 +56,9 @@ def plotFusionResults(Ws, vs, alllabels, times, win_fac, intervals_hier = [], la
         row, col = np.unravel_index(i, (nrows, 3))
         plt.subplot2grid((nrows, 8*3), (row, col*8), colspan=7)
         if time_uniform:
-            plt.imshow(WShow, cmap ='afmhot', extent=(times[0], times[-1], times[-1], times[0]), interpolation='nearest')
+            plt.imshow(WShow, cmap ='magma_r', extent=(times[0], times[-1], times[-1], times[0]), interpolation='nearest')
         else:
-            plt.pcolormesh(times, times, WShow, cmap = 'afmhot')
+            plt.pcolormesh(times, times, WShow, cmap = 'magma_r')
             plt.gca().invert_yaxis()
         plt.title("%s Similarity Matrix"%name)
         if row == nrows-1:
@@ -96,7 +96,10 @@ def plotFusionResults(Ws, vs, alllabels, times, win_fac, intervals_hier = [], la
             plt.gca().invert_yaxis()
     return fig
 
-def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, reg_diag, reg_neighbs, niters, do_animation, plot_result, do_crema=True):
+def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, \
+                        reg_diag, reg_neighbs, niters, do_animation, plot_result, \
+                        do_mfcc = True, do_chroma = True, do_tempogram = True, \
+                        do_crema=True, precomputed_crema = False):
     """
     Load in filename, compute features, average/stack delay, and do similarity
     network fusion (SNF) on all feature types
@@ -126,8 +129,16 @@ def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, reg
         Whether to plot and save images of the evolution of SNF
     plot_result: boolean
         Whether to plot the result of the fusion
+    do_mfcc: boolean
+        Compute MFCC in the fusion
+    do_chroma: boolean
+        Include chroma in the fusion
+    do_tempogram: boolean
+        Include tempogram in the fusion
     do_crema: boolean
-        Whether to include precomputed crema in the fusion
+        Include CREMA in the fusion
+    precomputed_crema: boolean
+        If doing CREMA, also use precomputed CREMA in the file "$filename_crema.mat"
     Returns
     -------
     {'Ws': An dictionary of weighted adjacency matrices for individual features
@@ -160,75 +171,68 @@ def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, reg
         intervals = librosa.segment.subsegment(C, intervals, n_segments=abs(win_fac))
 
     ## Step 3: Compute features
+    n_frames = np.inf
+    features = [] #A list of tuples (feature array, name string, aggregation function, distance function)
     # 1) CQT chroma with 3x oversampling in pitch
-    chroma = librosa.feature.chroma_cqt(y=y, sr=sr, hop_length=hop_length, bins_per_octave=12*3)
+    if do_chroma:
+        chroma = librosa.feature.chroma_cqt(y=y, sr=sr, hop_length=hop_length, bins_per_octave=12*3)
+        n_frames = min(n_frames, chroma.shape[1])
+        # median-aggregate chroma to suppress transients and passing tones
+        features.append({"x":chroma, "name":"Chromas", "agg_fn":np.median, "dist_fn":getCSMCosine})
 
     # 2) Exponentially liftered MFCCs
-    S = librosa.feature.melspectrogram(y, sr=sr, n_mels=128, hop_length=hop_length)
-    log_S = librosa.power_to_db(S, ref=np.max)
-    mfcc = librosa.feature.mfcc(S=log_S, n_mfcc=20)
-    lifterexp = 0.6
-    coeffs = np.arange(mfcc.shape[0])**lifterexp
-    coeffs[0] = 1
-    mfcc = coeffs[:, None]*mfcc
+    if do_mfcc:
+        S = librosa.feature.melspectrogram(y, sr=sr, n_mels=128, hop_length=hop_length)
+        log_S = librosa.power_to_db(S, ref=np.max)
+        mfcc = librosa.feature.mfcc(S=log_S, n_mfcc=20)
+        lifterexp = 0.6
+        coeffs = np.arange(mfcc.shape[0])**lifterexp
+        coeffs[0] = 1
+        mfcc = coeffs[:, None]*mfcc
+        n_frames = min(n_frames, mfcc.shape[1])
+        features.append({"x":mfcc, "name":"MFCCs", "agg_fn":np.mean, "dist_fn":getCSM})
 
     # 3) Tempograms
-    #  Use a super-flux max smoothing of 5 frequency bands in the oenv calculation
-    SUPERFLUX_SIZE = 5
-    oenv = librosa.onset.onset_strength(y=y, sr=sr, hop_length=hop_length,
-                                        max_size=SUPERFLUX_SIZE)
-    tempogram = librosa.feature.tempogram(onset_envelope=oenv, sr=sr, hop_length=hop_length)
+    if do_tempogram:
+        #  Use a super-flux max smoothing of 5 frequency bands in the oenv calculation
+        SUPERFLUX_SIZE = 5
+        oenv = librosa.onset.onset_strength(y=y, sr=sr, hop_length=hop_length,
+                                            max_size=SUPERFLUX_SIZE)
+        tempogram = librosa.feature.tempogram(onset_envelope=oenv, sr=sr, hop_length=hop_length)
+        features.append({"x":tempogram, "name":"Tempogram", "agg_fn":np.mean, "dist_fn":getCSM})
 
     # 4) Crema
     if do_crema:
-        matfilename = "%s_crema.mat"%filename
-        if not os.path.exists(matfilename):
-            print("****WARNING: PRECOMPUTED CREMA DOES NOT EXIST****")
-            do_crema = False
+        if precomputed_crema:
+            matfilename = "%s_crema.mat"%filename
+            if os.path.exists(matfilename):
+                data = sio.loadmat(matfilename)
+            else:
+                print("WARNING: Want to use precomputed CREMA but file %s doesn't exist"%matfilename)
+                do_crema = False
         else:
-            data = sio.loadmat(matfilename)
+            import crema
+            model = crema.models.chord.ChordModel()
+            y44100, sr = librosa.load(filename, sr=44100)
+            data = model.outputs(y=y44100, sr=44100)
+        if do_crema:
             fac = (float(sr)/44100.0)*4096.0/hop_length
             times_orig = fac*np.arange(len(data['chord_bass']))
             times_new = np.arange(mfcc.shape[1])
             interp = scipy.interpolate.interp1d(times_orig, data['chord_pitch'].T, kind='nearest', fill_value='extrapolate')
             chord_pitch = interp(times_new)
+            features.append({"x":chord_pitch, "name":"CREMA", "agg_fn":np.median, "dist_fn":getCSMCosine})
     
-    ## Step 4: Synchronize features to intervals
-    n_frames = np.min([chroma.shape[1], mfcc.shape[1], tempogram.shape[1]])
-    if do_crema:
-        n_frames = min(n_frames, chord_pitch.shape[1])
-    # median-aggregate chroma to suppress transients and passing tones
+    ## Step 4: Synchronize features to intervals, do delay embedding, compute SSM
     intervals = librosa.util.fix_frames(intervals, x_min=0, x_max=n_frames)
     times = intervals*float(hop_length)/float(sr)
-
-    chroma = librosa.util.sync(chroma, intervals, aggregate=np.median)
-    chroma = chroma[:, :n_frames]
-    mfcc = librosa.util.sync(mfcc, intervals)
-    mfcc = mfcc[:, :n_frames]
-    tempogram = librosa.util.sync(tempogram, intervals)
-    tempogram = tempogram[:, :n_frames]
-    if do_crema:
-        chord_pitch = librosa.util.sync(chord_pitch, intervals)
-        chord_pitch = chord_pitch[:, :n_frames]
-    
-
-    ## Step 5: Do a delay embedding and compute SSMs
-    XChroma = librosa.feature.stack_memory(chroma, n_steps=wins_per_block, mode='edge').T
-    DChroma = getCSMCosine(XChroma, XChroma) #Cosine distance
-    XMFCC = librosa.feature.stack_memory(mfcc, n_steps=wins_per_block, mode='edge').T
-    DMFCC = getCSM(XMFCC, XMFCC) #Euclidean distance
-    XTempogram = librosa.feature.stack_memory(tempogram, n_steps=wins_per_block, mode='edge').T
-    DTempogram = getCSM(XTempogram, XTempogram)
-    if do_crema:
-        XChordPitch = librosa.feature.stack_memory(chord_pitch, n_steps=wins_per_block, mode='edge').T
-        DChordPitch = getCSMCosine(XChordPitch, XChordPitch)
-
-    ## Step 5: Run similarity network fusion
-    FeatureNames = ['MFCCs', 'Chromas', 'Tempogram']
-    Ds = [DMFCC, DChroma, DTempogram]
-    if do_crema:
-        FeatureNames.append('Crema')
-        Ds.append(DChordPitch)
+    FeatureNames = []
+    Ds = []
+    for i, f in enumerate(features):
+        x = librosa.util.sync(f['x'], intervals, aggregate=f['agg_fn'])[:, :n_frames]
+        X = librosa.feature.stack_memory(x, n_steps=wins_per_block, mode='edge').T
+        Ds.append(f['dist_fn'](X, X))
+        FeatureNames.append(f['name'])
     # Edge case: If it's too small, zeropad SSMs
     for i, Di in enumerate(Ds):
         if Di.shape[0] < 2*K:
@@ -253,19 +257,6 @@ def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, reg
     for n, W in zip(FeatureNames, Ws):
         WsDict[n] = W
     WsDict['Fused'] = WFused
-    # Do fusion with only Chroma and MFCC
-    WsDict['Fused MFCC/Chroma'] = doSimilarityFusionWs(Ws[0:2], K=pK, niters=niters, \
-        reg_diag=reg_diag, reg_neighbs=reg_neighbs)
-    if do_crema:
-        # Do fusion with tempograms and Crema if Crema is available
-        WsDict['Fused Tgram/Crema'] = doSimilarityFusionWs(Ws[2::], K=pK, niters=niters, \
-            reg_diag=reg_diag, reg_neighbs=reg_neighbs)
-        # Do fusion with MFCC and Crema
-        WsDict['Fused MFCC/Crema'] = doSimilarityFusionWs([Ws[0], Ws[-1]], K=pK, niters=niters, \
-            reg_diag=reg_diag, reg_neighbs=reg_neighbs)
-        # Do fusion with MFCC, Chroma, and Crema
-        WsDict['Fused MFCC/Chroma/Crema'] = doSimilarityFusionWs([Ws[0], Ws[1], Ws[-1]], K=pK, niters=niters, \
-            reg_diag=reg_diag, reg_neighbs=reg_neighbs)
     if plot_result:
         plotFusionResults(WsDict, {}, {}, times, win_fac)
         plt.savefig("%s_Plot.png"%filename, bbox_inches='tight')

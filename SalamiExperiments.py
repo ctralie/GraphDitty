@@ -124,7 +124,8 @@ def compute_features(num, multianno_only = True, recompute=False):
 
     # Step 1: Compute feature-based similarity matrix and the matrix
     # fusing all of them
-    res = getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, reg_diag, reg_neighbs, niters, False, False)
+    res = getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, \
+                            reg_diag, reg_neighbs, niters, False, False, precomputed_crema=True)
     Ws, times = res['Ws'], res['times']
     df = librosa.segment.timelag_filter(scipy.ndimage.median_filter)
     if REC_SMOOTH > 0:
@@ -299,4 +300,5 @@ def aggregate_experiments_results(precomputed_name = "", multianno_only = True):
 if __name__ == '__main__':
     #get_inter_anno_agreement()
     #run_audio_experiments(NThreads=-1)
-    aggregate_experiments_results()
+    #aggregate_experiments_results()
+    compute_features(2, recompute=True)
