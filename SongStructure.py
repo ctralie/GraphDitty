@@ -50,7 +50,8 @@ def plotFusionResults(Ws, vs, alllabels, times, win_fac, intervals_hier = [], la
     time_uniform = win_fac >= 0
     for i, name in enumerate(Ws):
         W = Ws[name]
-        WShow = np.log(5e-2+W)
+        floor = np.quantile(W.flatten(), 0.01)
+        WShow = np.log(W+floor)
         np.fill_diagonal(WShow, 0)
         row, col = np.unravel_index(i, (nrows, 3))
         plt.subplot2grid((nrows, 8*3), (row, col*8), colspan=7)

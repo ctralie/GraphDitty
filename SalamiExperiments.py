@@ -33,7 +33,7 @@ sr=22050
 hop_length=512
 win_fac=10
 wins_per_block=20
-K=4
+K=3
 reg_diag=1.0
 reg_neighbs=0.0
 niters=10
@@ -169,6 +169,14 @@ def compute_features(num, multianno_only = True, recompute=False):
     print("Saving to %s"%figpath)
     plt.savefig(figpath, bbox_inches='tight')
     plt.close(fig)
+
+    ret['Ws'] = Ws
+    ret['times'] = times
+    ret['specintervals_hier'] = specintervals_hier
+    ret['speclabels_hier'] = speclabels_hier
+    ret['win_fac'] = win_fac
+    ret['jam'] = jam
+    return ret
 
 
 def run_audio_experiments(NThreads = 12):

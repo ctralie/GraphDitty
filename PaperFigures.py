@@ -107,8 +107,8 @@ def makeSNSPlot():
     plt.style.use('seaborn-darkgrid')
     res = sio.loadmat('allresults_K3.mat')
     scluster = pandas.read_csv('scluster_salami_all.csv')
-    res['scluster'] = scluster[['MULTI_L-Precision', 'MULTI_L-Recall', 'MULTI_L-Measure']].values
-    names = ['scluster', 'Fused', 'interanno']
+    res['LSD'] = scluster[['MULTI_L-Precision', 'MULTI_L-Recall', 'MULTI_L-Measure']].values
+    names = ['LSD', 'Fused', 'interanno']
     interanno = res['interanno']
     interanno2 = interanno[:, [1, 0, 2]]
     interanno = np.concatenate((interanno, interanno2), 0)
@@ -173,5 +173,5 @@ def makeTable():
 
 if __name__ == '__main__':
     #SalamiSSMFigure(num=936)
-    #makeSNSPlot()
-    makeTable()
+    makeSNSPlot()
+    #makeTable()
