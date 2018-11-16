@@ -8,10 +8,10 @@ import subprocess
 from multiprocessing import Pool as PPool
 from SongStructure import *
 from SalamiExperiments import *
+from Covers1000 import *
 model = crema.models.chord.ChordModel()
 
-def compute_crema(num):
-    filename = "%s/%i/audio.mp3"%(AUDIO_DIR, num)
+def compute_crema(filename):
     print("Doing crema on %s"%filename)
     matfilename = "%s_crema.mat"%filename
     subprocess.call([FFMPEG_BINARY, "-i", filename, "-ar", "44100", "-ac", "1", "%s.wav"%filename])
@@ -22,20 +22,36 @@ def compute_crema(num):
     data = model.outputs(y=y44100, sr=44100)
     sio.savemat(matfilename, data)
 
-def compute_all_crema(NThreads = 12):
+def compute_all_crema_salami(NThreads = 12):
     """
     Precompute all crema features in the SALAMI dataset
     """
     # Disable inconsistent hierarchy warnings
     if not sys.warnoptions:
         warnings.simplefilter("ignore")
-    songnums = [int(s) for s in os.listdir(AUDIO_DIR)]
+    filenames = ["%s/%s/audio.mp3"%(AUDIO_DIR, s) for s in os.listdir(AUDIO_DIR)]
     if NThreads > -1:
         parpool = PPool(NThreads)
-        parpool.map(compute_crema, (songnums))
+        parpool.map(compute_crema, (filenames))
     else:
-        for num in songnums:
-            compute_crema(num)
+        for filename in filenames:
+            compute_crema(filename)
+
+def compute_all_crema_covers1000(NThreads = 12):
+    """
+    Precompute all crema features in the SALAMI dataset
+    """
+    # Disable inconsistent hierarchy warnings
+    if not sys.warnoptions:
+        warnings.simplefilter("ignore")
+    filenames = [getCovers100AudioFilename(p) for p in getCovers1000SongPrefixes()]
+    if NThreads > -1:
+        parpool = PPool(NThreads)
+        parpool.map(compute_crema, (filenames))
+    else:
+        for filename in filenames:
+            compute_crema(filename)
 
 if __name__ == '__main__':
-    compute_all_crema(-1)
+    #compute_all_crema_salami(-1)
+    compute_all_crema_covers1000(-1)
