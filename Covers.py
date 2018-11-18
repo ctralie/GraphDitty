@@ -1,10 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import torch
 import time
 from SongStructure import *
 from CSMSSMTools import *
-from scattering.scattering2d import Scattering2D
+from Scattering import *
 
 ## Global fusion variables
 sr=22050
@@ -46,15 +45,10 @@ def get_scattering_corpus(filenames, dim = 512, norm_per_path = True, do_plot = 
 
     # Initialize the scattering transform
     N = len(filenames)
-    print("Initializing scattering transform...")
-    tic = time.time()
-    scattering = Scattering2D(M=dim, N=dim, J=2, L=16).cuda()
-    print("Elapsed Time: %.3g"%(time.time()-tic))
     similarity_images = np.zeros((N, dim*dim)) # All similarity images
-    ITemp = torch.zeros((1, 1, dim, dim))
-    scattering_coeffs = np.zeros((N, int(289*dim*dim/64)), dtype=np.float32)
+    Ws = []
+    ## Step 1: Compute fused similarity matrix for the song
     for i, filename in enumerate(filenames):
-        ## Step 1: Compute fused similarity matrix for the song
         print("Computing similarity fusion for song %i of %i..."%(i+1, N))
         res = getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, \
                         reg_diag, reg_neighbs, niters, False, False, \
@@ -63,28 +57,35 @@ def get_scattering_corpus(filenames, dim = 512, norm_per_path = True, do_plot = 
         W = res['Ws']['Fused']
         # Resize to a common dimension
         W = imresize(W, (dim, dim))
+        Ws.append(W)
         similarity_images[i, :] = np.array(W.flatten(), dtype=np.float32)
-
-        ## Step 2: Perform the 2D scattering transform
-        ITemp[0, 0, :, :] = torch.from_numpy(W)
-        resifull = scattering(ITemp.cuda()).to("cpu").numpy()
-        # Dowsample images by a factor of 2 for memory
-        k = int(resifull.shape[3]/2)
-        resi = np.zeros((1, 1, resifull.shape[2], k, k), dtype=np.float32)
-        for ipath in range(resi.shape[2]):
-            resi[0, 0, ipath, :, :] = imresize(resifull[0, 0, ipath, :, :], (k, k))
-        if norm_per_path:
-            # Normalize coefficients in a path
-            for ipath in range(resi.shape[2]):
-                path = resi[0, 0, ipath, :, :]
-                norm = np.sqrt(np.sum(path**2))
-                if norm > 0:
-                    resi[0, 0, ipath, :, :] /= norm
-        scattering_coeffs[i, :] = np.array(resi.flatten(), dtype=np.float32)
         if do_plot:
             fig = plotFusionResults(res['Ws'], {}, {}, res['times'], win_fac)
             plt.savefig("%s_Similarity.png"%filename, bbox_inches='tight')
             plt.close(fig)
+    
+    ## Step 2: Perform the 2D scattering transform
+    AllScattering = []
+    for i in range(len(Ws)/10):
+        print("Doing scattering transform batch %i of %i"%(i+1, len(Ws)/10))
+        AllScattering += getScatteringTransform(Ws[i*10:(i+1)*10], renorm=False)
+        Ws[i*10:(i+1)*10] = [None]*len(Ws[i*10:(i+1)*10])
+
+    scattering_coeffs = np.array([])
+    for i, images in enumerate(AllScattering):
+        scattering = np.array([])
+        for image in images:
+            if norm_per_path:
+                # Normalize coefficients in a path
+                norm = np.sqrt(np.sum(image**2))
+                if norm > 0:
+                    image /= norm
+            scattering = np.concatenate((scattering, image.flatten()))
+        if scattering_coeffs.size == 0:
+            scattering_coeffs = np.zeros((N, scattering.size), dtype=np.float32)
+        scattering_coeffs[i, :] = scattering
+        AllScattering[i] = None
+
     return (similarity_images, scattering_coeffs)
 
 
