@@ -43,19 +43,19 @@ def getCovers1000Ks():
 if __name__ == '__main__':
     filenames = [getCovers1000AudioFilename(prefix) for prefix in getCovers1000SongPrefixes()]
     dim = 512
-    znorm_per_path = True
-    similarity_images, scattering_coeffs = get_scattering_corpus(filenames, dim=dim, znorm_per_path = znorm_per_path, do_plot=True)
+    norm_per_path = True
+    similarity_images, scattering_coeffs = get_scattering_corpus(filenames, dim=dim, norm_per_path = norm_per_path, do_plot=True)
     DL2 = getSSM(similarity_images)
     similarity_images = None
     DScattering = getSSM(scattering_coeffs)
     scattering_coeffs = None
     sio.savemat("covers1000.mat", {"DL2":DL2, "DScattering":DScattering, "dim":dim})
 
-    normstr = {True:"_ZNorm", False:""}
+    normstr = {True:"_Norm", False:""}
     Ks = getCovers1000Ks()
     fout = open("Covers1000ResultsLargeScale.html", "a")
     S = np.minimum(DL2, DL2.T)
     getEvalStatistics(-S, Ks, [1, 25, 50, 100], fout, "L2_%i"%(dim))
     S = np.minimum(DScattering, DScattering.T)
-    getEvalStatistics(-S, Ks, [1, 25, 50, 100], fout, "Scattering_%i%s"%(dim, normstr[znorm_per_path]))
+    getEvalStatistics(-S, Ks, [1, 25, 50, 100], fout, "Scattering_%i%s"%(dim, normstr[norm_per_path]))
     fout.close()

@@ -23,7 +23,7 @@ do_crema = True
 precomputed_crema = True
 
 
-def get_scattering_corpus(filenames, dim = 512, znorm_per_path = True, do_plot = False):
+def get_scattering_corpus(filenames, dim = 512, norm_per_path = True, do_plot = False):
     """
     Get the scattering transform on resized SSMs from a corpus of music
     Parameters
@@ -32,8 +32,8 @@ def get_scattering_corpus(filenames, dim = 512, znorm_per_path = True, do_plot =
         Paths to all files in the corpus
     dim: int
         Dimension to which to uniformly rescale SSMs (power of 2)
-    znorm_per_path: boolean
-        Whether to z-normalize each path
+    norm_per_path: boolean
+        Whether to normalize each path
     do_plot: boolean
         Whether to plot the fused SSMs and save them to disk
     Returns
@@ -73,8 +73,8 @@ def get_scattering_corpus(filenames, dim = 512, znorm_per_path = True, do_plot =
         resi = np.zeros((1, 1, resifull.shape[2], k, k), dtype=np.float32)
         for ipath in range(resi.shape[2]):
             resi[0, 0, ipath, :, :] = imresize(resifull[0, 0, ipath, :, :], (k, k))
-        if znorm_per_path:
-            # Z-normalize coefficients in a path
+        if norm_per_path:
+            # Normalize coefficients in a path
             for ipath in range(resi.shape[2]):
                 path = resi[0, 0, ipath, :, :]
                 norm = np.sqrt(np.sum(path**2))
