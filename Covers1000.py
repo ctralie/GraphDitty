@@ -14,7 +14,7 @@ def getCovers1000AudioFilename(filePrefix):
     audiofile = glob.glob("%s*"%filePrefix)
     filename = filePrefix
     for f in audiofile:
-        if not f[-3::] == "txt":
+        if not f[-3::] == "txt" and not f[-3::] == "mat":
             filename = f
             break
     return filename
@@ -45,8 +45,6 @@ if __name__ == '__main__':
     dim = 512
     znorm_per_path = True
     similarity_images, scattering_coeffs = get_scattering_corpus(filenames, dim=dim, znorm_per_path = znorm_per_path, do_plot=True)
-    sio.savemat("similarity_images_%i.mat"%dim, {"similarity_images":similarity_images})
-    sio.savemat("scattering_coeffs_%i.mat"%dim, {"scattering_coeffs":scattering_coeffs})
     DL2 = getSSM(similarity_images)
     similarity_images = None
     DScattering = getSSM(scattering_coeffs)
