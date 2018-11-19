@@ -48,11 +48,14 @@ def get_scattering_corpus(filenames, dim = 512, norm_per_path = True, do_plot = 
     N = len(filenames)
     print("Initializing scattering transform...")
     tic = time.time()
-    scattering = Scattering2D(M=dim, N=dim, J=2, L=16).cuda()
+    J = 4
+    L = 8
+    NPaths = L*L*J*(J-1)/2 + J*L + 1
+    scattering = Scattering2D(M=dim, N=dim, J=J, L=L).cuda()
     print("Elapsed Time: %.3g"%(time.time()-tic))
     similarity_images = np.zeros((N, dim*dim)) # All similarity images
     ITemp = torch.zeros((1, 1, dim, dim))
-    scattering_coeffs = np.zeros((N, int(289*dim*dim/64)), dtype=np.float32)
+    scattering_coeffs = np.zeros((N, int(NPaths*dim*dim/(2**(2*J)))), dtype=np.float32)
     for i, filename in enumerate(filenames):
         ## Step 1: Compute fused similarity matrix for the song
         print("Computing similarity fusion for song %i of %i..."%(i+1, N))
@@ -67,12 +70,7 @@ def get_scattering_corpus(filenames, dim = 512, norm_per_path = True, do_plot = 
 
         ## Step 2: Perform the 2D scattering transform
         ITemp[0, 0, :, :] = torch.from_numpy(W)
-        resifull = scattering(ITemp.cuda()).to("cpu").numpy()
-        # Dowsample images by a factor of 2 for memory
-        k = int(resifull.shape[3]/2)
-        resi = np.zeros((1, 1, resifull.shape[2], k, k), dtype=np.float32)
-        for ipath in range(resi.shape[2]):
-            resi[0, 0, ipath, :, :] = imresize(resifull[0, 0, ipath, :, :], (k, k))
+        resi = scattering(ITemp.cuda()).to("cpu").numpy()
         if norm_per_path:
             # Normalize coefficients in a path
             for ipath in range(resi.shape[2]):
