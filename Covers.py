@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import scipy.io as sio
 import torch
 import time
 from SongStructure import *
@@ -48,7 +49,7 @@ def get_scattering_corpus(filenames, dim = 512, norm_per_path = True, do_plot = 
     N = len(filenames)
     print("Initializing scattering transform...")
     tic = time.time()
-    J = 4
+    J = 6
     L = 8
     NPaths = L*L*J*(J-1)/2 + J*L + 1
     scattering = Scattering2D(M=dim, N=dim, J=J, L=L).cuda()
@@ -59,13 +60,22 @@ def get_scattering_corpus(filenames, dim = 512, norm_per_path = True, do_plot = 
     for i, filename in enumerate(filenames):
         ## Step 1: Compute fused similarity matrix for the song
         print("Computing similarity fusion for song %i of %i..."%(i+1, N))
-        res = getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, \
-                        reg_diag, reg_neighbs, niters, False, False, \
-                        do_mfcc = do_mfcc, do_chroma = do_chroma, do_tempogram = do_tempogram, \
-                        do_crema=do_crema, precomputed_crema = precomputed_crema)
-        W = res['Ws']['Fused']
-        # Resize to a common dimension
-        W = imresize(W, (dim, dim))
+        matfilename = "%s_SSM.mat"%filename
+        if not os.path.exists(matfilename):
+            # Cache SSM computation
+            res = getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, \
+                            reg_diag, reg_neighbs, niters, False, False, \
+                            do_mfcc = do_mfcc, do_chroma = do_chroma, do_tempogram = do_tempogram, \
+                            do_crema=do_crema, precomputed_crema = precomputed_crema)
+            W = res['Ws']['Fused']
+            # Resize to a common dimension
+            W = imresize(W, (dim, dim))
+            sio.savemat(matfilename, {"W":W})
+            if do_plot:
+                fig = plotFusionResults(res['Ws'], {}, {}, res['times'], win_fac)
+                plt.savefig("%s_Similarity.png"%filename, bbox_inches='tight')
+                plt.close(fig)
+        W = sio.loadmat(matfilename)["W"]
         similarity_images[i, :] = np.array(W.flatten(), dtype=np.float32)
 
         ## Step 2: Perform the 2D scattering transform
@@ -79,10 +89,6 @@ def get_scattering_corpus(filenames, dim = 512, norm_per_path = True, do_plot = 
                 if norm > 0:
                     resi[0, 0, ipath, :, :] /= norm
         scattering_coeffs[i, :] = np.array(resi.flatten(), dtype=np.float32)
-        if do_plot:
-            fig = plotFusionResults(res['Ws'], {}, {}, res['times'], win_fac)
-            plt.savefig("%s_Similarity.png"%filename, bbox_inches='tight')
-            plt.close(fig)
     return (similarity_images, scattering_coeffs)
 
 
