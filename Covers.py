@@ -6,8 +6,11 @@ import time
 from SongStructure import *
 from CSMSSMTools import *
 from scattering.scattering2d import Scattering2D
+from Laplacian import *
+from skimage import filters
 
 ## Global fusion variables
+lapfn = getRandomWalkLaplacianEigsDense
 sr=22050
 hop_length=512
 win_fac=10
@@ -90,6 +93,62 @@ def get_scattering_corpus(filenames, dim = 512, norm_per_path = True, do_plot = 
                     resi[0, 0, ipath, :, :] /= norm
         scattering_coeffs[i, :] = np.array(resi.flatten(), dtype=np.float32)
     return (similarity_images, scattering_coeffs)
+
+
+def get_lowrank_binary_corpus(filenames, dim = 512, neigs=10, do_plot = False):
+    """
+    Get the scattering transform on resized SSMs from a corpus of music
+    Parameters
+    ----------
+    filenames: list of N strings
+        Paths to all files in the corpus
+    dim: int
+        Dimension to which to uniformly rescale SSMs (power of 2)
+    do_plot: boolean
+        Whether to plot the fused SSMs and save them to disk
+    Returns
+    -------
+    """
+    N = len(filenames)
+    K = 3 # Use smaller K for Laplacian
+    similarity_images = np.zeros((N, dim*dim)) # All similarity images
+    res = 3
+    plt.figure(figsize=(res*(neigs+1), 2*res))
+    for i, filename in enumerate(filenames):
+        ## Step 1: Compute fused similarity matrix for the song
+        print("Computing similarity fusion for song %i of %i..."%(i+1, N))
+        matfilename = "%s_SSM.mat"%filename
+        if not os.path.exists(matfilename):
+            # Cache SSM computation
+            res = getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, \
+                            reg_diag, reg_neighbs, niters, False, False, \
+                            do_mfcc = do_mfcc, do_chroma = do_chroma, do_tempogram = do_tempogram, \
+                            do_crema=do_crema, precomputed_crema = precomputed_crema)
+            W = res['Ws']['Fused']
+            # Resize to a common dimension
+            W = imresize(W, (dim, dim))
+            sio.savemat(matfilename, {"W":W})
+        W = sio.loadmat(matfilename)["W"]
+        similarity_images[i, :] = np.array(W.flatten(), dtype=np.float32)
+        vs = lapfn(W)[:, 1:neigs+1]
+        WLowRank = [vs[:, 0:k+1].dot(vs[:, 0:k+1].T) for k in range(neigs)]
+        WLowRank.append(W)
+        #WLowRankBinary = [(Wk < filters.threshold_otsu(Wk)) for Wk in WLowRank]
+        WLowRankBinary = [(Wk > 0) for Wk in WLowRank]
+        if do_plot:
+            plt.clf()
+            for k in range(neigs+1):
+                plt.subplot(2, neigs+1, k+1)
+                WShow = np.array(WLowRank[k])
+                WShow -= np.min(WShow)
+                floor = np.quantile(WShow.flatten(), 0.01)
+                WShow = np.log(WShow+floor)
+                plt.imshow(WShow, cmap='magma_r')
+                plt.subplot(2, neigs+1, neigs+k+2)
+                plt.imshow(WLowRankBinary[k])
+            plt.savefig("%s_Laplacian.png"%filename, bbox_inches='tight')
+
+
 
 
 def getEvalStatistics(ScoresParam, Ks, topsidx, fout = None, name = None):

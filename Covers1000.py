@@ -40,7 +40,7 @@ def getCovers1000Ks():
         Ks.append(len(songs))
     return Ks
 
-if __name__ == '__main__':
+if __name__ == '__main__2':
     filenames = [getCovers1000AudioFilename(prefix) for prefix in getCovers1000SongPrefixes()]
     dim = 512
     norm_per_path = True
@@ -59,3 +59,8 @@ if __name__ == '__main__':
     S = np.minimum(DScattering, DScattering.T)
     getEvalStatistics(-S, Ks, [1, 25, 50, 100], fout, "Scattering_%i%s"%(dim, normstr[norm_per_path]))
     fout.close()
+
+if __name__ == '__main__':
+    filenames = [getCovers1000AudioFilename(prefix) for prefix in getCovers1000SongPrefixes()]
+    dim = 512
+    get_lowrank_binary_corpus(filenames[0:4], do_plot=True)
