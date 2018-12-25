@@ -11,6 +11,7 @@ from skimage import filters
 
 ## Global fusion variables
 lapfn = getRandomWalkLaplacianEigsDense
+specfn = lambda v, dim, times: spectralClusterSequential(v, dim, times, rownorm=False)
 sr=22050
 hop_length=512
 win_fac=10
@@ -95,7 +96,7 @@ def get_scattering_corpus(filenames, dim = 512, norm_per_path = True, do_plot = 
     return (similarity_images, scattering_coeffs)
 
 
-def get_lowrank_binary_corpus(filenames, dim = 512, neigs=10, do_plot = False):
+def get_lowrank_binary_corpus(filenames, dim = 512, df = 64, neigs=10, do_plot = False):
     """
     Get the scattering transform on resized SSMs from a corpus of music
     Parameters
@@ -103,7 +104,11 @@ def get_lowrank_binary_corpus(filenames, dim = 512, neigs=10, do_plot = False):
     filenames: list of N strings
         Paths to all files in the corpus
     dim: int
-        Dimension to which to uniformly rescale SSMs (power of 2)
+        Dimension to which to uniformly rescale SSMs initially (power of 2)
+    df: int
+        Factor by which to downsample binary masks (power of 2 < dim)
+    neigs: int
+        Maximum number of eigenvectors to use in the code
     do_plot: boolean
         Whether to plot the fused SSMs and save them to disk
     Returns
@@ -130,23 +135,36 @@ def get_lowrank_binary_corpus(filenames, dim = 512, neigs=10, do_plot = False):
             sio.savemat(matfilename, {"W":W})
         W = sio.loadmat(matfilename)["W"]
         similarity_images[i, :] = np.array(W.flatten(), dtype=np.float32)
-        vs = lapfn(W)[:, 1:neigs+1]
-        WLowRank = [vs[:, 0:k+1].dot(vs[:, 0:k+1].T) for k in range(neigs)]
-        WLowRank.append(W)
-        #WLowRankBinary = [(Wk < filters.threshold_otsu(Wk)) for Wk in WLowRank]
-        WLowRankBinary = [(Wk > 0) for Wk in WLowRank]
+
+        ## Step 2: Compute Laplacian eigenvectors and successive binary approximations
+        vs = lapfn(W)[:, 0:neigs]
+        WLowRank = [vs[:, 0:k].dot(vs[:, 0:k].T) for k in range(2, neigs+1)]
+        #vs = imresize(vs, (dim_final, vs.shape[1]))
+        alllabels = [specfn(vs, k, np.arange(W.shape[0]))['labels'] for k in range(2, neigs+1)]
+        WBinary = [(L[None, :] - L[:, None]) == 0 for L in alllabels]
+        for i, Wi in enumerate(WBinary):
+
+
         if do_plot:
             plt.clf()
-            for k in range(neigs+1):
+            WLowRank.append(W) # For plotting
+            WBinary.append(W)
+            for k in range(neigs):
                 plt.subplot(2, neigs+1, k+1)
                 WShow = np.array(WLowRank[k])
                 WShow -= np.min(WShow)
                 floor = np.quantile(WShow.flatten(), 0.01)
                 WShow = np.log(WShow+floor)
                 plt.imshow(WShow, cmap='magma_r')
+                if k < neigs:
+                    plt.title("k = %i"%(k+1))
+                else:
+                    plt.title("Original")
                 plt.subplot(2, neigs+1, neigs+k+2)
-                plt.imshow(WLowRankBinary[k])
+                plt.imshow(WBinary[k])
             plt.savefig("%s_Laplacian.png"%filename, bbox_inches='tight')
+        
+        ## Step 3: Create all pairs of 
 
 
 
