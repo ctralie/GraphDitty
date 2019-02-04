@@ -46,7 +46,8 @@ def plotFusionResults(Ws, vs, alllabels, times, win_fac, intervals_hier = [], la
         Handle to the figure
     """
     nrows = int(np.ceil(len(Ws)/3.0))
-    fig = plt.figure(figsize=(0.5*32, 0.5*8*nrows))
+    fac = 0.7
+    fig = plt.figure(figsize=(fac*32, fac*8*nrows))
     time_uniform = win_fac >= 0
     for i, name in enumerate(Ws):
         W = Ws[name]
@@ -56,9 +57,9 @@ def plotFusionResults(Ws, vs, alllabels, times, win_fac, intervals_hier = [], la
         row, col = np.unravel_index(i, (nrows, 3))
         plt.subplot2grid((nrows, 8*3), (row, col*8), colspan=7)
         if time_uniform:
-            plt.imshow(WShow, cmap ='afmhot', extent=(times[0], times[-1], times[-1], times[0]), interpolation='nearest')
+            plt.imshow(WShow, cmap ='magma_r', extent=(times[0], times[-1], times[-1], times[0]), interpolation='nearest')
         else:
-            plt.pcolormesh(times, times, WShow, cmap = 'afmhot')
+            plt.pcolormesh(times, times, WShow, cmap = 'magma_r')
             plt.gca().invert_yaxis()
         plt.title("%s Similarity Matrix"%name)
         if row == nrows-1:
@@ -280,14 +281,14 @@ if __name__ == '__main__':
     parser.add_argument('--hop_length', type=int, default=512, help="Hop Size in samples")
     parser.add_argument('--win_fac', type=int, default=10, help="Number of windows to average in a frame.  If negative, then do beat tracking, and subdivide by |win_fac| times within each beat")
     parser.add_argument('--wins_per_block', type=int, default=20, help="Number of frames to stack in sliding window for every feature")
-    parser.add_argument('--K', type=int, default=10, help="Number of nearest neighbors in similarity network fusion.  If -1, then autotune to sqrt(N) for an NxN similarity matrix")
+    parser.add_argument('--K', type=int, default=5, help="Number of nearest neighbors in similarity network fusion.  If -1, then autotune to sqrt(N) for an NxN similarity matrix")
     parser.add_argument('--reg_diag', type=float, default=1.0, help="Regularization for self-similarity promotion")
     parser.add_argument('--reg_neighbs', type=float, default=0.5, help="Regularization for direct neighbor similarity promotion")
-    parser.add_argument('--niters', type=int, default=10, help="Number of iterations in similarity network fusion")
+    parser.add_argument('--niters', type=int, default=3, help="Number of iterations in similarity network fusion")
     parser.add_argument('--neigs', type=int, default=8, help="Number of eigenvectors in the graph Laplacian")
     parser.add_argument('--matfilename', type=str, default="out.mat", help="Name of the .mat file to which to save the results")
     parser.add_argument('--jsonfilename', type=str, default="out.json", help="Name of the .json file to which to save results for viewing in the GUI")
-    parser.add_argument('--diffusion_znormalize', type=int, default=0, help="Whether to perform Z-normalization with diffusion maps to spread things out more")
+    parser.add_argument('--diffusion_znormalize', type=int, default=1, help="Whether to perform Z-normalization with diffusion maps to spread things out more")
 
 
     opt = parser.parse_args()
@@ -296,4 +297,4 @@ if __name__ == '__main__':
         K=opt.K, reg_diag=opt.reg_diag, reg_neighbs=opt.reg_neighbs, niters=opt.niters, \
         do_animation=opt.do_animation, plot_result=opt.plot_result, do_crema=False)
     sio.savemat(opt.matfilename, res)
-    saveResultsJSON(opt.filename, res['times'], res['Ws'], res['K'], opt.neigs, opt.jsonfilename, opt.diffusion_znormalize)
+    saveResultsJSON(opt.filename, res['times'], res['Ws'], opt.neigs, opt.jsonfilename, opt.diffusion_znormalize)

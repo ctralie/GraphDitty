@@ -43,13 +43,14 @@ def getBase64File(filename):
     fin.close()
     return b.decode("ASCII")
 
-def getBase64PNGImage(pD, cmapstr, logfloor = 0):
+def getBase64PNGImage(pD, cmapstr, logfloor_quantile = 0):
     """
     Get an image as a base64 string
     """
     D = np.array(pD)
-    if logfloor > 0:
-        D = np.log(D + logfloor)
+    if logfloor_quantile > 0:
+        floor = np.quantile(pD.flatten(), logfloor_quantile)
+        D = np.log(D + floor)
     c = plt.get_cmap(cmapstr)
     D = D-np.min(D)
     D = np.round(255.0*D/np.max(D))
@@ -72,7 +73,7 @@ def pretty_floats(obj):
         return map(pretty_floats, obj)
     return obj
 
-def get_graph_obj(W, K, res = 400):
+def get_graph_obj(W, K=10, res = 400):
     """
     Return an object corresponding to a nearest neighbor graph
     Parameters
@@ -112,7 +113,7 @@ def get_graph_obj(W, K, res = 400):
     ret["fac"] = fac
     return ret
 
-def saveResultsJSON(filename, times, Ws, K, neigs, jsonfilename, diffusion_znormalize):
+def saveResultsJSON(filename, times, Ws, neigs, jsonfilename, diffusion_znormalize):
     """
     Save a JSON file holding the audio and structure information, which can 
     be parsed by SongStructureGUI.html.  Audio and images are stored as
@@ -126,8 +127,6 @@ def saveResultsJSON(filename, times, Ws, K, neigs, jsonfilename, diffusion_znorm
         A list of times corresponding to each row in Ws
     Ws: Dictionary of (str, ndarray(N, N))
         A dictionary of N x N similarity matrices for different feature types
-    K: int
-        Number of nearest neighbors to use in graph representation
     neigs: int
         Number of eigenvectors to compute in graph Laplacian
     jsonfilename: string
@@ -143,7 +142,7 @@ def saveResultsJSON(filename, times, Ws, K, neigs, jsonfilename, diffusion_znorm
     W = Ws['Fused']
     WOut = np.array(W)
     np.fill_diagonal(WOut, 0)
-    Results['W'] = getBase64PNGImage(WOut, 'afmhot', 5e-2)
+    Results['W'] = getBase64PNGImage(WOut, 'magma_r', logfloor_quantile=0.01)
     Results['dim'] = W.shape[0]
     
     # Compute Laplacian eigenvectors
@@ -157,24 +156,27 @@ def saveResultsJSON(filename, times, Ws, K, neigs, jsonfilename, diffusion_znorm
     vout = np.zeros((v.shape[1]*fac, v.shape[0]))
     for i in range(fac):
         vout[i::fac, :] = v.T
-    Results['v'] = getBase64PNGImage(vout, 'afmhot')
+    Results['v'] = getBase64PNGImage(vout, 'magma_r')
     Results['v_height'] = vout.shape[0]
 
     # Setup the graph
-    Results['graph'] = json.dumps(get_graph_obj(WOut, K))
+    Results['graph'] = json.dumps(get_graph_obj(WOut))
 
     # Setup diffusion maps
     c = plt.get_cmap('Spectral')
     C = c(np.array(np.round(np.linspace(0, 255,W.shape[0])), dtype=np.int32))
     C = C.flatten()
-    X = getDiffusionMap(W)
+    WDiff = np.array(W)
+    floor = np.quantile(WDiff, 0.01)
+    WDiff = np.log(WDiff+floor)
+    WDiff -= np.min(WDiff)
+    np.fill_diagonal(WDiff, 0)
+    X = getDiffusionMap(WDiff, neigs=4, thresh=0)
+    X = X[:, 0:-1]
     if diffusion_znormalize:
         X = X - np.mean(X, 0)[None, :]
         X = X/np.sqrt(np.sum(X**2, 1))[:, None]
-        pca = PCA(n_components=3)
-        X = pca.fit_transform(X).flatten()
-    else:
-        X = X[:, [-2, -3, -4]].flatten()
+    X = X.flatten()
     Results['colors'] = C.tolist()
     Results['X'] = X.tolist()
 

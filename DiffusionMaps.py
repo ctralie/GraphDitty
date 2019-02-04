@@ -7,46 +7,36 @@ from scipy import sparse
 import time
 from CSMSSMTools import *
 
-def getDiffusionMap(K, t = -1, includeDiag = True, thresh = 5e-4, NEigs = 51):
+def getDiffusionMap(K, neigs = 4, thresh=5e-4):
     """
-    Perform diffusion maps on a similarity matrix
-    :param K: A similarity matrix
-    :param SSM: Metric between all pairs of points
-    :param t: Diffusion parameter.  If -1, do Autotuning
-    :param includeDiag: If true, include recurrence to diagonal in the markov
-        chain.  If false, zero out diagonal
-    :param thresh: Threshold below which to zero out entries in markov chain in
-        the sparse approximation
-    :param NEigs: The number of eigenvectors to use in the approximation
+    Perform diffusion maps with a unit timestep, automatically
+    normalizing for nonuniform sampling
+    Parameters
+    ----------
+    K: ndarray(N, N)
+        A similarity kernel
+    neigs: int
+        Number of eigenvectors to compute
+    thresh: float
+        Threshold below which to zero out entries in
+        the Markov chain approximation
     """
-    N = K.shape[0]
-    #Use the letters from the delaPorte paper
-    K = np.array(K)
-    if not includeDiag:
-        np.fill_diagonal(K, np.zeros(N))
-    RowSumSqrt = np.sqrt(np.sum(K, 1))
-    DInvSqrt = sparse.diags([1/RowSumSqrt], [0])
-
-    #Symmetric normalized Laplacian
-    Pp = (K/RowSumSqrt[None, :])/RowSumSqrt[:, None]
-    Pp[Pp < thresh] = 0
-    Pp = sparse.csr_matrix(Pp)
-
-    lam, X = sparse.linalg.eigsh(Pp, NEigs, which='LM')
-    lam = lam/lam[-1] #In case of numerical instability
-
-    #Check to see if autotuning
-    if t > -1:
-        lamt = lam**t
-    else:
-        #Autotuning diffusion time
-        lamt = np.array(lam)
-        lamt[0:-1] = lam[0:-1]/(1-lam[0:-1])
-
-    #Do eigenvector version
-    V = DInvSqrt.dot(X) #Right eigenvectors
-    M = V*lamt[None, :]
-    return M/RowSumSqrt[:, None] #Put back into orthogonal Euclidean coordinates
+    tic = time.time()
+    print("Building diffusion map matrix...")
+    P = np.sum(K, 1)
+    P[P == 0] = 1
+    KHat = (K/P[:, None])/P[None, :]
+    dRow = np.sum(KHat, 1)
+    KHat[KHat < thresh] = 0
+    KHat = sparse.csc_matrix(KHat)
+    M = sparse.diags(dRow).tocsc()
+    print("Elapsed Time: %.3g"%(time.time()-tic))
+    print("Solving eigen system...")
+    tic = time.time()
+    # Solve a generalized eigenvalue problem
+    w, v = sparse.linalg.eigsh(KHat, k=neigs, M=M, which='LM')
+    print("Elapsed Time: %.3g"%(time.time()-tic))
+    return w[None, :]*v
 
 def getPinchedCircle(N):
     t = np.linspace(0, 2*np.pi, N+1)[0:N]
@@ -67,7 +57,6 @@ def getTorusKnot(N, p, q):
 def testDiffusionMaps():
     N = 400
     X = getPinchedCircle(N)
-    sio.savemat("X.mat", {"X":X})
     tic = time.time()
     SSMOrig = getSSM(X)
     toc = time.time()
@@ -92,7 +81,7 @@ def testDiffusionMaps():
     for t in ts:
         plt.clf()
         W = getW(SSMOrig, int(Kappa*SSMOrig.shape[0]))
-        M = getDiffusionMap(W, t)
+        M = getDiffusionMap(W)
         SSM = getSSM(M)
         plt.subplot(121)
         X = M[:, [-2, -3]]
