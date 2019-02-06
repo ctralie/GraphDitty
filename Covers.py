@@ -2,10 +2,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.io as sio
 import torch
+from kymatio import Scattering2D
 import time
 from SongStructure import *
 from CSMSSMTools import *
-from scattering.scattering2d import Scattering2D
 from Laplacian import *
 from skimage import filters
 
@@ -56,7 +56,7 @@ def get_scattering_corpus(filenames, dim = 512, norm_per_path = True, do_plot = 
     J = 6
     L = 8
     NPaths = L*L*J*(J-1)/2 + J*L + 1
-    scattering = Scattering2D(M=dim, N=dim, J=J, L=L).cuda()
+    scattering = Scattering2D(shape=(dim, dim), J=J, L=L).cuda()
     print("Elapsed Time: %.3g"%(time.time()-tic))
     similarity_images = np.zeros((N, dim*dim)) # All similarity images
     ITemp = torch.zeros((1, 1, dim, dim))
@@ -142,7 +142,7 @@ def get_lowrank_binary_corpus(filenames, dim = 512, df = 64, neigs=10, do_plot =
         #vs = imresize(vs, (dim_final, vs.shape[1]))
         alllabels = [specfn(vs, k, np.arange(W.shape[0]))['labels'] for k in range(2, neigs+1)]
         WBinary = [(L[None, :] - L[:, None]) == 0 for L in alllabels]
-        for i, Wi in enumerate(WBinary):
+        #for i, Wi in enumerate(WBinary):
 
 
         if do_plot:
