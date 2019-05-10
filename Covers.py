@@ -8,6 +8,7 @@ from SongStructure import *
 from CSMSSMTools import *
 from Laplacian import *
 from skimage import filters
+from Haar import *
 
 ## Global fusion variables
 lapfn = getRandomWalkLaplacianEigsDense
@@ -16,11 +17,10 @@ sr=22050
 hop_length=512
 win_fac=10
 wins_per_block=20
-K=10
+K=3
 reg_diag=1.0
 reg_neighbs=0.0
 niters=10
-neigs=10
 do_mfcc = True
 do_chroma = True
 do_tempogram = True
@@ -64,7 +64,7 @@ def get_scattering_corpus(filenames, dim = 512, norm_per_path = True, do_plot = 
     for i, filename in enumerate(filenames):
         ## Step 1: Compute fused similarity matrix for the song
         print("Computing similarity fusion for song %i of %i..."%(i+1, N))
-        matfilename = "%s_SSM.mat"%filename
+        matfilename = "%s_SSM_K%i.mat"%(filename, K)
         if not os.path.exists(matfilename):
             # Cache SSM computation
             res = getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, \
@@ -96,33 +96,32 @@ def get_scattering_corpus(filenames, dim = 512, norm_per_path = True, do_plot = 
     return (similarity_images, scattering_coeffs)
 
 
-def get_lowrank_binary_corpus(filenames, dim = 512, df = 64, neigs=10, do_plot = False):
+def get_haar_corpus(filenames, dim = 512, neigs=None, do_plot = False):
     """
-    Get the scattering transform on resized SSMs from a corpus of music
+    Get the Haar scattering transform on resized SSMs from a corpus of music
     Parameters
     ----------
     filenames: list of N strings
         Paths to all files in the corpus
     dim: int
         Dimension to which to uniformly rescale SSMs initially (power of 2)
-    df: int
-        Factor by which to downsample binary masks (power of 2 < dim)
     neigs: int
-        Maximum number of eigenvectors to use in the code
+        Maximum number of eigenvectors to use in a binary clustering
+        representation.  If None, then use real numbers
     do_plot: boolean
         Whether to plot the fused SSMs and save them to disk
     Returns
     -------
     """
     N = len(filenames)
-    K = 3 # Use smaller K for Laplacian
     similarity_images = np.zeros((N, dim*dim)) # All similarity images
-    res = 3
-    plt.figure(figsize=(res*(neigs+1), 2*res))
+    scattering_coeffs = np.zeros_like(similarity_images)
+    res = 4
+    plt.figure(figsize=(res*3, res*2))
     for i, filename in enumerate(filenames):
         ## Step 1: Compute fused similarity matrix for the song
         print("Computing similarity fusion for song %i of %i..."%(i+1, N))
-        matfilename = "%s_SSM.mat"%filename
+        matfilename = "%s_SSM_K%i.mat"%(filename, K)
         if not os.path.exists(matfilename):
             # Cache SSM computation
             res = getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, \
@@ -134,38 +133,42 @@ def get_lowrank_binary_corpus(filenames, dim = 512, df = 64, neigs=10, do_plot =
             W = imresize(W, (dim, dim))
             sio.savemat(matfilename, {"W":W})
         W = sio.loadmat(matfilename)["W"]
-        similarity_images[i, :] = np.array(W.flatten(), dtype=np.float32)
+        H = get_haarscattering(W)
+        
 
         ## Step 2: Compute Laplacian eigenvectors and successive binary approximations
-        vs = lapfn(W)[:, 0:neigs]
-        WLowRank = [vs[:, 0:k].dot(vs[:, 0:k].T) for k in range(2, neigs+1)]
-        #vs = imresize(vs, (dim_final, vs.shape[1]))
-        alllabels = [specfn(vs, k, np.arange(W.shape[0]))['labels'] for k in range(2, neigs+1)]
-        WBinary = [(L[None, :] - L[:, None]) == 0 for L in alllabels]
-        #for i, Wi in enumerate(WBinary):
-
+        if neigs:
+            vs = lapfn(W)[:, 0:neigs]
+            WLowRank = vs.dot(vs.T)
+            L = specfn(vs, neigs, np.arange(W.shape[0]))['labels']
+            WB = np.array((L[None, :] - L[:, None]) == 0, dtype=float)
+            HB = get_haarscattering(WB)
+            similarity_images[i, :] = np.array(WB.flatten(), dtype=np.float32)
+            scattering_coeffs[i, :] = np.array(HB.flatten(), dtype=np.float32)
+        else:
+            similarity_images[i, :] = np.array(W.flatten(), dtype=np.float32)
+            scattering_coeffs[i, :] = np.array(H.flatten(), dtype=np.float32)
 
         if do_plot:
             plt.clf()
-            WLowRank.append(W) # For plotting
-            WBinary.append(W)
-            for k in range(neigs):
-                plt.subplot(2, neigs+1, k+1)
-                WShow = np.array(WLowRank[k])
-                WShow -= np.min(WShow)
-                floor = np.quantile(WShow.flatten(), 0.01)
-                WShow = np.log(WShow+floor)
-                plt.imshow(WShow, cmap='magma_r')
-                if k < neigs:
-                    plt.title("k = %i"%(k+1))
-                else:
-                    plt.title("Original")
-                plt.subplot(2, neigs+1, neigs+k+2)
-                plt.imshow(WBinary[k])
-            plt.savefig("%s_Laplacian.png"%filename, bbox_inches='tight')
-        
-        ## Step 3: Create all pairs of 
-
+            plt.subplot(232)
+            plt.imshow(W)
+            plt.title("Similarity Image")
+            plt.subplot(233)
+            plt.imshow(H)
+            plt.title("Haar")
+            if neigs:
+                plt.subplot(234)
+                plt.imshow(WLowRank)
+                plt.title("Low Rank Approx")
+                plt.subplot(235)
+                plt.imshow(WB)
+                plt.title("Binary Image(%.3g)"%((np.sum(WB>0))/float(WB.shape[0]**2)))
+                plt.subplot(236)
+                plt.imshow(HB)
+                plt.title("Haar Binary(%.3g)"%((np.sum(HB>0))/float(HB.shape[0]**2)))
+            plt.savefig("%s_Haar.png"%filename, bbox_inches='tight')
+    return (similarity_images, scattering_coeffs)
 
 
 

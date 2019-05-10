@@ -301,4 +301,10 @@ if __name__ == '__main__':
     #get_inter_anno_agreement()
     #run_audio_experiments(NThreads=-1)
     #aggregate_experiments_results()
-    compute_features(2, recompute=True)
+
+    songnums = [int(s) for s in os.listdir(AUDIO_DIR)]
+    songnums.remove(878)
+    songnums = sorted(songnums)
+    for s in songnums:
+        print(s)
+        compute_features(s, recompute=True)

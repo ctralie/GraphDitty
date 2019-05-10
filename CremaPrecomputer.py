@@ -8,7 +8,6 @@ import subprocess
 from multiprocessing import Pool as PPool
 from SongStructure import *
 from SalamiExperiments import *
-from Covers1000 import *
 model = crema.models.chord.ChordModel()
 
 def compute_crema(filename):
@@ -41,6 +40,7 @@ def compute_all_crema_covers1000(NThreads = 12):
     """
     Precompute all crema features in the SALAMI dataset
     """
+    from Covers1000 import getCovers1000AudioFilename, getCovers1000SongPrefixes
     # Disable inconsistent hierarchy warnings
     if not sys.warnoptions:
         warnings.simplefilter("ignore")
@@ -54,4 +54,5 @@ def compute_all_crema_covers1000(NThreads = 12):
 
 if __name__ == '__main__':
     #compute_all_crema_salami(-1)
-    compute_all_crema_covers1000(-1)
+    #compute_all_crema_covers1000(-1)
+    compute_crema("MJ.mp3")

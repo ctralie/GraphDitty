@@ -20,7 +20,7 @@ REC_SMOOTH = 9
 MANUAL_AUDIO_LOAD = True
 FFMPEG_BINARY = "ffmpeg"
 
-def plotFusionResults(Ws, vs, alllabels, times, win_fac, intervals_hier = [], labels_hier = []):
+def plotFusionResults(Ws, vs, alllabels, times, win_fac, wins_per_block = 1, intervals_hier = [], labels_hier = []):
     """
     Show a plot of different adjacency matrices and their associated eigenvectors
     and cluster labels, if applicable
@@ -40,28 +40,38 @@ def plotFusionResults(Ws, vs, alllabels, times, win_fac, intervals_hier = [], la
         Number of frames that have been averaged in each window
         If negative, beat tracking has been done, and the intervals are possibly non-uniform
         This means that a mesh plot will be necessary
+    wins_per_block: int
     Returns
     -------
     fig: matplotlib.pyplot object
         Handle to the figure
     """
     nrows = int(np.ceil(len(Ws)/3.0))
-    fac = 0.7
-    fig = plt.figure(figsize=(fac*32, fac*8*nrows))
+    fac = 0.5
+    if len(intervals_hier) > 0:
+        fig = plt.figure(figsize=(fac*32, fac*8*nrows))
+    else:
+        fig = plt.figure(figsize=(fac*24, fac*8*nrows))
     time_uniform = win_fac >= 0
-    for i, name in enumerate(Ws):
+    for i, name in enumerate(['Chromas', 'MFCCs', 'Fused MFCC/Chroma', 'CREMA', 'Tempogram', 'Fused']):
         W = Ws[name]
         floor = np.quantile(W.flatten(), 0.01)
         WShow = np.log(W+floor)
         np.fill_diagonal(WShow, 0)
         row, col = np.unravel_index(i, (nrows, 3))
-        plt.subplot2grid((nrows, 8*3), (row, col*8), colspan=7)
+        if len(intervals_hier) > 0:
+            plt.subplot2grid((nrows, 8*3), (row, col*8), colspan=7)
+        else:
+            plt.subplot(nrows, 3, i+1)
         if time_uniform:
             plt.imshow(WShow, cmap ='magma_r', extent=(times[0], times[-1], times[-1], times[0]), interpolation='nearest')
         else:
             plt.pcolormesh(times, times, WShow, cmap = 'magma_r')
             plt.gca().invert_yaxis()
-        plt.title("%s Similarity Matrix"%name)
+        if 'Fused' in name:
+            plt.title(name)
+        else:
+            plt.title("%s lags=%i"%(name, wins_per_block))
         if row == nrows-1:
             plt.xlabel("Time (sec)")
         if col == 0:
@@ -79,7 +89,7 @@ def plotFusionResults(Ws, vs, alllabels, times, win_fac, intervals_hier = [], la
                 plt.gca().invert_yaxis()
             plt.axis('off')
             plt.title("Clusters")
-    #plt.tight_layout()
+    plt.tight_layout()
     if len(labels_hier) > 0:
         for k in range(2):
             plt.subplot2grid((nrows, 8*3), (nrows-1, 10+k*3))
@@ -100,7 +110,7 @@ def plotFusionResults(Ws, vs, alllabels, times, win_fac, intervals_hier = [], la
 def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, \
                         reg_diag, reg_neighbs, niters, do_animation, plot_result, \
                         do_mfcc = True, do_chroma = True, do_tempogram = True, \
-                        do_crema=True, precomputed_crema = False):
+                        do_crema=True, precomputed_crema = True):
     """
     Load in filename, compute features, average/stack delay, and do similarity
     network fusion (SNF) on all feature types
@@ -204,6 +214,7 @@ def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, \
 
     # 4) Crema
     if do_crema:
+        print("DOING CREMA")
         if precomputed_crema:
             matfilename = "%s_crema.mat"%filename
             if os.path.exists(matfilename):
@@ -258,10 +269,18 @@ def getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, \
     for n, W in zip(FeatureNames, Ws):
         WsDict[n] = W
     WsDict['Fused'] = WFused
+    WFused2 = doSimilarityFusionWs([WsDict['Chromas'], WsDict['MFCCs']], K=pK, niters=niters, \
+        reg_diag=reg_diag, reg_neighbs=reg_neighbs, \
+        do_animation=do_animation, PlotNames=FeatureNames, \
+        PlotExtents=[times[0], times[-1]]) 
+    WsDict['Fused MFCC/Chroma'] = WFused2
     if plot_result:
         plotFusionResults(WsDict, {}, {}, times, win_fac)
         plt.savefig("%s_Plot.png"%filename, bbox_inches='tight')
-    return {'Ws':WsDict, 'times':times, 'K':pK}
+    featuresret = {}
+    for f in features:
+        featuresret[f['name']] = f
+    return {'Ws':WsDict, 'times':times, 'K':pK, 'features':featuresret}
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -286,6 +305,6 @@ if __name__ == '__main__':
     res = getFusedSimilarity(opt.filename, sr=opt.sr, \
         hop_length=opt.hop_length, win_fac=opt.win_fac, wins_per_block=opt.wins_per_block, \
         K=opt.K, reg_diag=opt.reg_diag, reg_neighbs=opt.reg_neighbs, niters=opt.niters, \
-        do_animation=opt.do_animation, plot_result=opt.plot_result, do_crema=False)
+        do_animation=opt.do_animation, plot_result=opt.plot_result, do_crema=True)
     sio.savemat(opt.matfilename, res)
     saveResultsJSON(opt.filename, res['times'], res['Ws'], opt.neigs, opt.jsonfilename, opt.diffusion_znormalize)
