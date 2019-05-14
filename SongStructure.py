@@ -20,7 +20,7 @@ REC_SMOOTH = 9
 MANUAL_AUDIO_LOAD = True
 FFMPEG_BINARY = "ffmpeg"
 
-def plotFusionResults(Ws, vs, alllabels, times, win_fac, wins_per_block = 1, intervals_hier = [], labels_hier = []):
+def plotFusionResults(Ws, vs, alllabels, times, win_fac, intervals_hier = [], labels_hier = [], levels = [0], FeatureOrder = 'Fused'):
     """
     Show a plot of different adjacency matrices and their associated eigenvectors
     and cluster labels, if applicable
@@ -40,26 +40,25 @@ def plotFusionResults(Ws, vs, alllabels, times, win_fac, wins_per_block = 1, int
         Number of frames that have been averaged in each window
         If negative, beat tracking has been done, and the intervals are possibly non-uniform
         This means that a mesh plot will be necessary
-    wins_per_block: int
     Returns
     -------
     fig: matplotlib.pyplot object
         Handle to the figure
     """
-    nrows = int(np.ceil(len(Ws)/3.0))
-    fac = 0.5
-    if len(intervals_hier) > 0:
+    nrows = int(np.ceil(len(FeatureOrder)/3.0))
+    fac = 2
+    if len(alllabels) > 0:
         fig = plt.figure(figsize=(fac*32, fac*8*nrows))
     else:
         fig = plt.figure(figsize=(fac*24, fac*8*nrows))
     time_uniform = win_fac >= 0
-    for i, name in enumerate(['Chromas', 'MFCCs', 'Fused MFCC/Chroma', 'CREMA', 'Tempogram', 'Fused']):
+    for i, name in enumerate(FeatureOrder):
         W = Ws[name]
         floor = np.quantile(W.flatten(), 0.01)
         WShow = np.log(W+floor)
         np.fill_diagonal(WShow, 0)
         row, col = np.unravel_index(i, (nrows, 3))
-        if len(intervals_hier) > 0:
+        if len(alllabels) > 0:
             plt.subplot2grid((nrows, 8*3), (row, col*8), colspan=7)
         else:
             plt.subplot(nrows, 3, i+1)
@@ -68,17 +67,22 @@ def plotFusionResults(Ws, vs, alllabels, times, win_fac, wins_per_block = 1, int
         else:
             plt.pcolormesh(times, times, WShow, cmap = 'magma_r')
             plt.gca().invert_yaxis()
-        if 'Fused' in name:
-            plt.title(name)
-        else:
-            plt.title("%s lags=%i"%(name, wins_per_block))
+        plt.title(name)
         if row == nrows-1:
             plt.xlabel("Time (sec)")
         if col == 0:
             plt.ylabel("Time (sec)")
         if name in alllabels:
+            """
+            plt.subplot2grid((nrows, 8*3), (row, col*8+6), colspan=2)
+            vn = np.array(vs[name])
+            plt.imshow(vn, cmap='magma_r', extent=(0, vs[name].shape[1], times[-1], times[0]), aspect='auto', interpolation='nearest')
+            plt.axis('off')
+            plt.title("Eigvecs")
+            """
+
+            #"""
             plt.subplot2grid((nrows, 8*3), (row, col*8+7))
-            levels = [0] # Look at only finest level for now
             labels = np.zeros((W.shape[0], len(levels)))
             for k, level in enumerate(levels):
                 labels[:, k] = alllabels[name][level]['labels']
@@ -89,6 +93,7 @@ def plotFusionResults(Ws, vs, alllabels, times, win_fac, wins_per_block = 1, int
                 plt.gca().invert_yaxis()
             plt.axis('off')
             plt.title("Clusters")
+            #"""
     plt.tight_layout()
     if len(labels_hier) > 0:
         for k in range(2):
