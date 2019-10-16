@@ -20,7 +20,7 @@ REC_SMOOTH = 9
 MANUAL_AUDIO_LOAD = True
 FFMPEG_BINARY = "ffmpeg"
 
-def plotFusionResults(Ws, vs, alllabels, times, win_fac, intervals_hier = [], labels_hier = [], levels = [0], FeatureOrder = 'Fused'):
+def plotFusionResults(Ws, vs, alllabels, times, win_fac, intervals_hier = [], labels_hier = [], levels = [0], FeatureOrder = ['Chromas', 'MFCCs', 'Fused MFCC/Chroma', 'CREMA', 'Tempogram', 'Fused']):
     """
     Show a plot of different adjacency matrices and their associated eigenvectors
     and cluster labels, if applicable

@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import scipy.io as sio
 import scipy.interpolate
+from scipy import sparse
 import os
 import librosa
 import librosa.display
@@ -171,7 +172,73 @@ def makeTable():
     df = pandas.DataFrame(res, index=names, columns = ['Mean Precision', 'KS Precision', 'Mean Recall', 'KS Recall', 'Mean L-Score', 'KS L-Score'])
     print(df.to_latex(float_format='%.3g'))
 
+def doLaplacianExample():
+    np.random.seed(0)
+    N = 30
+    K = N*4
+    K2 = N
+    K3 = 10
+    X1 = np.random.rand(N, 2)
+    X2 = np.random.rand(N, 2) + np.array([2, 0])
+    X3 = np.random.rand(N, 2) + np.array([5, 2])
+    X4 = np.random.rand(N, 2) + np.array([7, 2])
+
+    X = np.concatenate((X1, X2, X3, X4), axis=0)
+    pix = np.arange(N)
+    edges = np.zeros((0, 3))
+    for i in range(4):
+        i1 = N*i
+        Di = getCSM(X[i1:i1+N, :], X[i1:i1+N])
+        I, J = np.meshgrid(pix, pix)
+        upper = I > J
+        Di = Di[upper]
+        I = I[upper] + i1
+        J = J[upper] + i1
+        idx = np.argsort(Di)
+        I = I[idx[0:K]]
+        J = J[idx[0:K]]
+        D = Di[idx[0:K]]
+        ei = np.array([I, J, D]).T
+        edges = np.concatenate((edges, ei), axis=0)
+    for (i1, i2, K) in [(0, 1, K2), (2, 3, K2), (1, 2, K3)]:
+        i1 *= N
+        i2 *= N
+        Di = getCSM(X[i1:i1+N, :], X[i2:i2+N])
+        I, J = np.meshgrid(pix, pix)
+        I, J = I.flatten(), J.flatten()
+        Di = Di.flatten()
+        I += i1
+        J += i2
+        idx = np.argsort(Di)
+        I = I[idx[0:K]]
+        J = J[idx[0:K]]
+        D = Di[idx[0:K]]
+        ei = np.array([I, J, D]).T
+        edges = np.concatenate((edges, ei), axis=0)
+    I = np.array(edges[:, 0], dtype=int)
+    J = np.array(edges[:, 1], dtype=int)
+    V = np.exp(-edges[:, 2])
+    N = X.shape[0]
+    W = np.zeros((N, N))
+    W[I, J] = V
+    W += W.T
+    v = getRandomWalkLaplacianEigsDense(W)
+
+    plt.figure(figsize=(12, 12))
+    for p in range(1, 5):
+        plt.subplot(2, 2, p)
+        for i in range(edges.shape[0]):
+            e = np.array(edges[i, 0:2], dtype=int)
+            plt.plot(X[e, 0], X[e, 1], 'C0')
+        plt.scatter(X[:, 0], X[:, 1], c=v[:, p], cmap='magma_r', zorder=10)
+        plt.gca().set_facecolor((0.7, 0.7, 0.7))
+        plt.xticks([])
+        plt.yticks([])
+        plt.axis('equal')
+    plt.savefig("LaplacianExample.svg", bbox_inches='tight')
+
 if __name__ == '__main__':
     #SalamiSSMFigure(num=936)
-    makeSNSPlot()
+    #makeSNSPlot()
     #makeTable()
+    doLaplacianExample()
