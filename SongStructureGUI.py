@@ -2,7 +2,8 @@
 #Purpose: To extract similarity alignments for use in the GUI
 import numpy as np
 import os
-import scipy.misc
+import skimage
+import skimage.io
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 import json
@@ -55,7 +56,8 @@ def getBase64PNGImage(pD, cmapstr, logfloor_quantile = 0):
     D = D-np.min(D)
     D = np.round(255.0*D/np.max(D))
     C = c(np.array(D, dtype=np.int32))
-    scipy.misc.imsave("temp.png", C)
+    C = np.array(np.round(C*255), dtype=np.uint8)
+    skimage.io.imsave("temp.png", C)
     b = getBase64File("temp.png")
     os.remove("temp.png")
     return "data:image/png;base64, " + b
