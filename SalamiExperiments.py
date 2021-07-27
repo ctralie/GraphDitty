@@ -21,6 +21,7 @@ from Laplacian import *
 from SimilarityFusion import getW, doSimilarityFusionWs
 from SongStructure import *
 from multiprocessing import Pool as PPool
+import json
 
 ## Paths to dataset
 JAMS_DIR = 'salami-data-public-jams-multi'
@@ -112,7 +113,8 @@ def compute_features(num, multianno_only = True, recompute=False):
     """
     matfilename = "%s/%i/results.mat"%(AUDIO_DIR, num)
     jamsfilename = "%s/%i.jams"%(JAMS_DIR, num)
-    if (not recompute) and (os.path.exists(matfilename) or (not os.path.exists(jamsfilename))):
+    hierfilename = "%s/%i/hier.json"%(AUDIO_DIR, num)
+    if (not recompute) and ( (os.path.exists(matfilename) and os.path.exists(hierfilename)) or (not os.path.exists(jamsfilename))):
         print("Skipping %i because it has already been computed"%num)
         return
     filename = "%s/%i/audio.mp3"%(AUDIO_DIR, num)
@@ -126,10 +128,6 @@ def compute_features(num, multianno_only = True, recompute=False):
     # fusing all of them
     res = getFusedSimilarity(filename, sr, hop_length, win_fac, wins_per_block, K, reg_diag, reg_neighbs, niters, False, False)
     Ws, times = res['Ws'], res['times']
-    df = librosa.segment.timelag_filter(scipy.ndimage.median_filter)
-    if REC_SMOOTH > 0:
-        for name in Ws:
-            Ws[name] = df(Ws[name], size=(1, REC_SMOOTH))
 
     # Step 2: Compute Laplacian eigenvectors and perform spectral clustering
     # at different resolutions
@@ -138,6 +136,9 @@ def compute_features(num, multianno_only = True, recompute=False):
     #print("Elapsed time spectral clustering: %.3g"%(time.time()-tic))
     specintervals_hier = {name:[res['intervals_hier'] for res in alllabels[name]] for name in alllabels}
     speclabels_hier = {name:[res['labels_hier'] for res in alllabels[name]] for name in alllabels}
+
+    json.dump({'intervals':{name:[[x.tolist() for x in res['intervals_hier']] for res in alllabels[name]] for name in alllabels}, 
+           'labels':{name:[res['labels_hier'] for res in alllabels[name]] for name in alllabels}}, open(hierfilename, "w"))
 
     ## Step 3: Compare to annotators and save results
     ret = {name:[] for name in Ws}
@@ -187,7 +188,7 @@ def run_audio_experiments(NThreads = 12):
     # Disable inconsistent hierarchy warnings
     if not sys.warnoptions:
         warnings.simplefilter("ignore")
-    songnums = [int(s) for s in os.listdir(AUDIO_DIR)]
+    songnums = sorted([int(s) for s in os.listdir(AUDIO_DIR)])
     if NThreads > -1:
         parpool = PPool(NThreads)
         parpool.map(compute_features, (songnums))
@@ -201,7 +202,7 @@ def aggregate_experiments_results(precomputed_name = "", multianno_only = True):
     the annotator agreements
     """
     # Step 1: Extract feature-based agreements
-    names = ['MFCCs', 'Chromas', 'Tempogram', 'Crema', 'Fused Tgram/Crema', 'Fused MFCC/Chroma', 'Fused', 'interanno']
+    names = ['MFCCs', 'Chromas', 'Tempogram', 'Crema', 'Fused Tgram_Crema', 'Fused MFCC_Chroma', 'Fused', 'interanno']
     prls = {name:np.zeros((0, 3)) for name in names} # Dictionary of precison, recall, and l-scores
     idxs = [] #Indices of 
 
@@ -298,5 +299,5 @@ def aggregate_experiments_results(precomputed_name = "", multianno_only = True):
 
 if __name__ == '__main__':
     #get_inter_anno_agreement()
-    #run_audio_experiments(NThreads=-1)
-    aggregate_experiments_results()
+    run_audio_experiments(NThreads=-1)
+    #aggregate_experiments_results()
